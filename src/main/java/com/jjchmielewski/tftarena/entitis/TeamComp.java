@@ -9,6 +9,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Arrays;
+import java.util.Comparator;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Document(collation = "TeamComp")
@@ -27,6 +28,48 @@ public class TeamComp {
 
     public TeamComp() {
     }
+
+    public String getTeamName(){
+
+        Arrays.sort(this.traits, new Comparator<Trait>() {
+            @Override
+            public int compare(Trait o1, Trait o2) {
+                if(o1.getNum_units() > o2.getNum_units())
+                    return -1;
+                else{
+                    if(o1.getNum_units() == o2.getNum_units()){
+                        if(o1.getStyle() > o2.getStyle()){
+                            return -1;
+                        }
+                        else
+                            return 1;
+                    }
+                    else
+                        return 1;
+                }
+            }
+        });
+
+        String teamName = new String();
+
+        if(this.traits.length > 1){
+            String[] unitNameSplit = this.traits[0].getName().split("_");
+
+            if(unitNameSplit.length < 2){
+                teamName = "No team";
+            }
+            else {
+
+                teamName += unitNameSplit[1] + this.traits[0].getNum_units();
+            }
+        }
+        else{
+            teamName = "No team";
+        }
+
+        return teamName;
+    }
+
 
     @Override
     public String toString() {

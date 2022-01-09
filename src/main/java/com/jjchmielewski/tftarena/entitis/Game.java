@@ -3,6 +3,7 @@ package com.jjchmielewski.tftarena.entitis;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document
@@ -11,6 +12,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Setter
 public class Game {
 
+    @Id
     private String id;
 
     private GameInfo info;
