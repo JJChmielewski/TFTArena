@@ -19,16 +19,20 @@ import java.util.concurrent.TimeUnit;
 @Getter
 public class DataCollectorSubThread extends Thread{
 
+
+    private GameRepository gameRepository;
+
     private final List<String> games;
     private final String url;
     private final HttpEntity<String> request;
 
     private List<Game> collectedGames;
 
-    public DataCollectorSubThread(List<String> games, String url, HttpEntity<String> request) {
+    public DataCollectorSubThread(List<String> games, String url, HttpEntity<String> request, GameRepository gameRepository) {
         this.games = games;
         this.url = url;
         this.request = request;
+        this.gameRepository = gameRepository;
     }
 
     @SneakyThrows
@@ -40,12 +44,18 @@ public class DataCollectorSubThread extends Thread{
         this.collectedGames = new ArrayList<>();
 
         for(String game : games){
-            Game temp = restTemplate.exchange(url+game, HttpMethod.GET,request,Game.class).getBody();
+            try{
+                TimeUnit.MILLISECONDS.sleep(1300);
 
-            if(temp!=null)
-                collectedGames.add(temp);
+                Game temp = restTemplate.exchange(url+game, HttpMethod.GET,request,Game.class).getBody();
 
-            TimeUnit.MILLISECONDS.sleep(1300);
+                if(temp!=null)
+                    gameRepository.save(temp);
+
+            }catch (Exception e){
+                e.printStackTrace();
+                continue;
+            }
         }
 
         System.out.println("Subthread data collection successful");

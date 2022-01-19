@@ -38,9 +38,9 @@ public class DataCollector extends Thread{
         headers.add("X-Riot-Token", this.apiKey);
         final HttpEntity<String> request = new HttpEntity<>(headers);
 
-        final String urlDiamondEU = "https://euw1.api.riotgames.com/tft/league/v1/entries/DIAMOND/I?page=1";
-        final String urlDiamondUS = "https://na1.api.riotgames.com/tft/league/v1/entries/DIAMOND/I?page=1";
-        final String urlDiamondAsia = "https://kr.api.riotgames.com/tft/league/v1/entries/DIAMOND/I?page=1";
+        final String urlDiamondEU = "https://euw1.api.riotgames.com/tft/league/v1/entries/DIAMOND/I?page=";
+        final String urlDiamondUS = "https://na1.api.riotgames.com/tft/league/v1/entries/DIAMOND/I?page=";
+        final String urlDiamondAsia = "https://kr.api.riotgames.com/tft/league/v1/entries/DIAMOND/I?page=";
 
         final String urlSummonerEU = "https://euw1.api.riotgames.com/tft/summoner/v1/summoners/";
         final String urlSummonerAsia = "https://kr.api.riotgames.com/tft/summoner/v1/summoners/";
@@ -51,39 +51,40 @@ public class DataCollector extends Thread{
         final String urlSummonerMatchEU = "https://europe.api.riotgames.com/tft/match/v1/matches/by-puuid/";
 
 
-        Summoner[] diamondSummonersEU;
-        Summoner[] diamondSummonersUS;
-        Summoner[] diamondSummonersAsia;
+        List<Summoner> diamondSummonersEU = new ArrayList<>();
+        List<Summoner> diamondSummonersUS = new ArrayList<>();
+        List<Summoner> diamondSummonersAsia = new ArrayList<>();
 
-        ResponseEntity<Summoner[]> responseDiamondEU = restTemplate.exchange(urlDiamondEU,HttpMethod.GET,request,Summoner[].class);
-        ResponseEntity<Summoner[]> responseDiamondUS = restTemplate.exchange(urlDiamondUS,HttpMethod.GET,request,Summoner[].class);
-        ResponseEntity<Summoner[]> responseDiamondAsia = restTemplate.exchange(urlDiamondAsia, HttpMethod.GET,request,Summoner[].class);
+        for(int i=1;i<=100;i++){
+            ResponseEntity<Summoner[]> responseDiamondEU = restTemplate.exchange(urlDiamondEU+i,HttpMethod.GET,request,Summoner[].class);
+            ResponseEntity<Summoner[]> responseDiamondUS = restTemplate.exchange(urlDiamondUS+i,HttpMethod.GET,request,Summoner[].class);
+            ResponseEntity<Summoner[]> responseDiamondAsia = restTemplate.exchange(urlDiamondAsia+i, HttpMethod.GET,request,Summoner[].class);
 
-        diamondSummonersEU = responseDiamondEU.getBody();
-        diamondSummonersUS = responseDiamondUS.getBody();
-        diamondSummonersAsia = responseDiamondAsia.getBody();
+            if(responseDiamondEU.getBody() != null)
+                diamondSummonersEU.addAll(Arrays.asList(responseDiamondEU.getBody()));
+            if(responseDiamondUS.getBody() != null)
+                diamondSummonersUS.addAll(Arrays.asList(responseDiamondUS.getBody()));
+            if(responseDiamondAsia.getBody() != null)
+                diamondSummonersAsia.addAll(Arrays.asList(responseDiamondAsia.getBody()));
+        }
 
 
-        for(int i=0; i<diamondSummonersUS.length; i++){
-            diamondSummonersEU[i] = restTemplate.exchange(urlSummonerEU+diamondSummonersEU[i].getSummonerId(),HttpMethod.GET,request,Summoner.class).getBody();
-            diamondSummonersUS[i] = restTemplate.exchange(urlSummonerUS+diamondSummonersUS[i].getSummonerId(),HttpMethod.GET,request,Summoner.class).getBody();
-            diamondSummonersAsia[i] = restTemplate.exchange(urlSummonerAsia+diamondSummonersAsia[i].getSummonerId(),HttpMethod.GET,request,Summoner.class).getBody();
+        for(int i=0; i<diamondSummonersUS.size(); i++){
+            diamondSummonersEU.set(i,restTemplate.exchange(urlSummonerEU+diamondSummonersEU.get(i).getSummonerId(),HttpMethod.GET,request,Summoner.class).getBody());
+            diamondSummonersUS.set(i,restTemplate.exchange(urlSummonerUS+diamondSummonersUS.get(i).getSummonerId(),HttpMethod.GET,request,Summoner.class).getBody());
+            diamondSummonersAsia.set(i,restTemplate.exchange(urlSummonerAsia+diamondSummonersAsia.get(i).getSummonerId(),HttpMethod.GET,request,Summoner.class).getBody());
 
             TimeUnit.MILLISECONDS.sleep(1300);
         }
-
-        System.out.println(Arrays.toString(diamondSummonersEU));
-        System.out.println(Arrays.toString(diamondSummonersUS));
-        System.out.println(Arrays.toString(diamondSummonersAsia));
 
         List<String> matchListDiamondUS = new ArrayList<>();
         List<String> matchListDiamondAsia = new ArrayList<>();
         List<String> matchListDiamondEU = new ArrayList<>();
 
-        for(int i=0; i<diamondSummonersUS.length;i++){
-            String[] matchesDiamondEU = restTemplate.exchange(urlSummonerMatchEU+diamondSummonersEU[i].getPuuid()+"/ids?count=100",HttpMethod.GET,request,String[].class).getBody();
-            String[] matchesDiamondUS = restTemplate.exchange(urlSummonerMatchUS+diamondSummonersUS[i].getPuuid()+"/ids?count=100",HttpMethod.GET,request,String[].class).getBody();
-            String[] matchesDiamondAsia = restTemplate.exchange(urlSummonerMatchAsia+diamondSummonersAsia[i].getPuuid()+"/ids?count=100",HttpMethod.GET,request,String[].class).getBody();
+        for(int i=0; i<diamondSummonersUS.size();i++){
+            String[] matchesDiamondEU = restTemplate.exchange(urlSummonerMatchEU+diamondSummonersEU.get(i).getPuuid()+"/ids?count=10",HttpMethod.GET,request,String[].class).getBody();
+            String[] matchesDiamondUS = restTemplate.exchange(urlSummonerMatchUS+diamondSummonersUS.get(i).getPuuid()+"/ids?count=10",HttpMethod.GET,request,String[].class).getBody();
+            String[] matchesDiamondAsia = restTemplate.exchange(urlSummonerMatchAsia+diamondSummonersAsia.get(i).getPuuid()+"/ids?count=10",HttpMethod.GET,request,String[].class).getBody();
 
             if(matchesDiamondUS!=null)
                 matchListDiamondUS.addAll(Arrays.asList(matchesDiamondUS));
@@ -99,9 +100,9 @@ public class DataCollector extends Thread{
         matchListDiamondAsia = new ArrayList<>(new HashSet<>(matchListDiamondAsia));
         matchListDiamondEU = new ArrayList<>(new HashSet<>(matchListDiamondEU));
 
-        DataCollectorSubThread subThreadUS = new DataCollectorSubThread(matchListDiamondUS, "https://americas.api.riotgames.com/tft/match/v1/matches/", request);
-        DataCollectorSubThread subThreadAsia = new DataCollectorSubThread(matchListDiamondAsia, "https://asia.api.riotgames.com/tft/match/v1/matches/",request);
-        DataCollectorSubThread subThreadEU = new DataCollectorSubThread(matchListDiamondEU, "https://europe.api.riotgames.com/tft/match/v1/matches/",request);
+        DataCollectorSubThread subThreadUS = new DataCollectorSubThread(matchListDiamondUS, "https://americas.api.riotgames.com/tft/match/v1/matches/", request, gameRepository);
+        DataCollectorSubThread subThreadAsia = new DataCollectorSubThread(matchListDiamondAsia, "https://asia.api.riotgames.com/tft/match/v1/matches/",request, gameRepository);
+        DataCollectorSubThread subThreadEU = new DataCollectorSubThread(matchListDiamondEU, "https://europe.api.riotgames.com/tft/match/v1/matches/",request, gameRepository);
 
         subThreadUS.start();
         subThreadAsia.start();
@@ -110,12 +111,6 @@ public class DataCollector extends Thread{
         subThreadUS.join();
         subThreadAsia.join();
         subThreadEU.join();
-
-        gameRepository.saveAll(subThreadUS.getCollectedGames());
-
-        gameRepository.saveAll(subThreadAsia.getCollectedGames());
-
-        gameRepository.saveAll(subThreadEU.getCollectedGames());
 
         System.out.println("Data collection successful");
 

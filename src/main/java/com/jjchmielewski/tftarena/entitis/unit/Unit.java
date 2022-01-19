@@ -20,8 +20,25 @@ public class Unit {
     private String character_id;
     private int[] items;
     private int tier;
+    private int offensiveComponentCount;
 
     public Unit() {
+    }
+
+    public void countOffensiveComponents(){
+
+        offensiveComponentCount = 0;
+
+        int[] offensiveComponents = new int[]{1,2,3,4,9};
+
+        for(int i : items){
+            for(int c : offensiveComponents){
+                if(i/10 == c)
+                    offensiveComponentCount++;
+                if(i%10 == c)
+                    offensiveComponentCount++;
+            }
+        }
     }
 
     @Override

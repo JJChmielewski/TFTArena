@@ -31,7 +31,10 @@ public class TeamComp {
 
     public String getTeamName(){
 
-        Arrays.sort(this.traits, new Comparator<Trait>() {
+        if(units == null || traits ==null)
+            return "No team";
+
+        Arrays.sort(this.traits, new Comparator<>() {
             @Override
             public int compare(Trait o1, Trait o2) {
                 if(o1.getNum_units() > o2.getNum_units())
@@ -42,7 +45,7 @@ public class TeamComp {
                             return -1;
                         }
                         else
-                            return 1;
+                            return 0;
                     }
                     else
                         return 1;
@@ -50,18 +53,32 @@ public class TeamComp {
             }
         });
 
-        String teamName = new String();
+        for(Unit u : this.units)
+            u.countOffensiveComponents();
 
-        if(this.traits.length > 1){
-            String[] unitNameSplit = this.traits[0].getName().split("_");
-
-            if(unitNameSplit.length < 2){
-                teamName = "No team";
+        Arrays.sort(this.units, new Comparator<>() {
+            @Override
+            public int compare(Unit o1, Unit o2) {
+                if(o1.getOffensiveComponentCount() > o2.getOffensiveComponentCount())
+                    return -1;
+                else{
+                    if(o1.getOffensiveComponentCount() == o2.getOffensiveComponentCount()){
+                        if(o1.getTier() > o2.getTier()){
+                            return -1;
+                        }
+                        else
+                            return 0;
+                    }
+                    else
+                        return 1;
+                }
             }
-            else {
+        });
 
-                teamName += unitNameSplit[1] + this.traits[0].getNum_units();
-            }
+
+        String teamName ="";
+        if(this.units.length > 5 && this.traits.length > 0){
+            teamName += this.traits[0].getName() + "_" + this.traits[0].getStyle() +"_"+ this.units[0].getCharacter_id()+"_"+this.units[0].getTier();
         }
         else{
             teamName = "No team";
