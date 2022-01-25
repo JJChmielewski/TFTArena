@@ -111,6 +111,8 @@ public class DataCollector extends Thread{
         DataCollectorSubThread subThreadAsia = new DataCollectorSubThread(matchListDiamondAsia, "https://asia.api.riotgames.com/tft/match/v1/matches/",request, gameRepository);
         DataCollectorSubThread subThreadEU = new DataCollectorSubThread(matchListDiamondEU, "https://europe.api.riotgames.com/tft/match/v1/matches/",request, gameRepository);
 
+        gameRepository.deleteAll();
+
         subThreadUS.start();
         subThreadAsia.start();
         subThreadEU.start();
