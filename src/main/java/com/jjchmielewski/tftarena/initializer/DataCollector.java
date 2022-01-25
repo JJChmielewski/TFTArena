@@ -55,7 +55,7 @@ public class DataCollector extends Thread{
         List<Summoner> diamondSummonersUS = new ArrayList<>();
         List<Summoner> diamondSummonersAsia = new ArrayList<>();
 
-        for(int i=1;i<=100;i++){
+        for(int i=1;i<=10;i++){
             ResponseEntity<Summoner[]> responseDiamondEU = restTemplate.exchange(urlDiamondEU+i,HttpMethod.GET,request,Summoner[].class);
             ResponseEntity<Summoner[]> responseDiamondUS = restTemplate.exchange(urlDiamondUS+i,HttpMethod.GET,request,Summoner[].class);
             ResponseEntity<Summoner[]> responseDiamondAsia = restTemplate.exchange(urlDiamondAsia+i, HttpMethod.GET,request,Summoner[].class);
@@ -66,8 +66,11 @@ public class DataCollector extends Thread{
                 diamondSummonersUS.addAll(Arrays.asList(responseDiamondUS.getBody()));
             if(responseDiamondAsia.getBody() != null)
                 diamondSummonersAsia.addAll(Arrays.asList(responseDiamondAsia.getBody()));
+
+            TimeUnit.MILLISECONDS.sleep(1300);
         }
 
+        System.out.println("summoners1");
 
         for(int i=0; i<diamondSummonersUS.size(); i++){
             diamondSummonersEU.set(i,restTemplate.exchange(urlSummonerEU+diamondSummonersEU.get(i).getSummonerId(),HttpMethod.GET,request,Summoner.class).getBody());
@@ -76,6 +79,8 @@ public class DataCollector extends Thread{
 
             TimeUnit.MILLISECONDS.sleep(1300);
         }
+
+        System.out.println("summoners2");
 
         List<String> matchListDiamondUS = new ArrayList<>();
         List<String> matchListDiamondAsia = new ArrayList<>();
@@ -95,6 +100,8 @@ public class DataCollector extends Thread{
 
             TimeUnit.MILLISECONDS.sleep(1300);
         }
+
+        System.out.println("matches");
 
         matchListDiamondUS = new ArrayList<>(new HashSet<>(matchListDiamondUS));
         matchListDiamondAsia = new ArrayList<>(new HashSet<>(matchListDiamondAsia));

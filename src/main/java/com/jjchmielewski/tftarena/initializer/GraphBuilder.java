@@ -18,14 +18,14 @@ public class GraphBuilder {
 
     private final TeamRepository teamRepository;
 
-    private final GameRepository dataCollector;
+    private final DataCollector dataCollector;
 
     private final GameRepository gameRepository;
 
     private final TeamNEO4JRepository teamNEO4JRepository;
 
     @Autowired
-    public GraphBuilder(TeamRepository teamRepository, GameRepository dataCollector, GameRepository gameRepository, TeamNEO4JRepository teamNEO4JRepository) {
+    public GraphBuilder(TeamRepository teamRepository, DataCollector dataCollector, GameRepository gameRepository, TeamNEO4JRepository teamNEO4JRepository) {
         this.teamRepository = teamRepository;
         this.dataCollector = dataCollector;
         this.gameRepository = gameRepository;
