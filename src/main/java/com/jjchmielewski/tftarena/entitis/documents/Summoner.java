@@ -1,4 +1,4 @@
-package com.jjchmielewski.tftarena.entitis;
+package com.jjchmielewski.tftarena.entitis.documents;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Getter;

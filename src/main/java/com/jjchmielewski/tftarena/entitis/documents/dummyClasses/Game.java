@@ -1,5 +1,4 @@
-package com.jjchmielewski.tftarena.entitis;
-
+package com.jjchmielewski.tftarena.entitis.documents.dummyClasses;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Getter;
@@ -7,26 +6,25 @@ import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.Arrays;
-
+@Document
 @JsonIgnoreProperties(ignoreUnknown = true)
-@Document(collation = "GameInfo")
 @Getter
 @Setter
-public class GameInfo {
+public class Game {
 
     @Id
     private String id;
 
-    private TeamComp[] participants;
+    private GameInfo info;
 
-    public GameInfo() {
+    public Game() {
     }
 
     @Override
     public String toString() {
-        return "GameInfo{" +
-                "participants=" + Arrays.toString(participants) +
+        return "Game{" +
+                "id='" + id + '\'' +
+                ", info=" + info +
                 '}';
     }
 }

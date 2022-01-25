@@ -1,6 +1,6 @@
 package com.jjchmielewski.tftarena.initializer;
 
-import com.jjchmielewski.tftarena.entitis.Summoner;
+import com.jjchmielewski.tftarena.entitis.documents.Summoner;
 import com.jjchmielewski.tftarena.repository.GameRepository;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,8 +1,8 @@
-package com.jjchmielewski.tftarena.entitis;
+package com.jjchmielewski.tftarena.entitis.documents;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.jjchmielewski.tftarena.entitis.unit.Trait;
-import com.jjchmielewski.tftarena.entitis.unit.Unit;
+import com.jjchmielewski.tftarena.entitis.documents.unit.Trait;
+import com.jjchmielewski.tftarena.entitis.documents.unit.Unit;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;

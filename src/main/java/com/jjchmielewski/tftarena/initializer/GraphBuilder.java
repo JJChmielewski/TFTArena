@@ -1,7 +1,7 @@
 package com.jjchmielewski.tftarena.initializer;
 
-import com.jjchmielewski.tftarena.entitis.Game;
-import com.jjchmielewski.tftarena.entitis.TeamComp;
+import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
+import com.jjchmielewski.tftarena.entitis.documents.TeamComp;
 import com.jjchmielewski.tftarena.entitis.nodes.Team;
 import com.jjchmielewski.tftarena.entitis.nodes.relationships.TeamRelationship;
 import com.jjchmielewski.tftarena.repository.GameRepository;

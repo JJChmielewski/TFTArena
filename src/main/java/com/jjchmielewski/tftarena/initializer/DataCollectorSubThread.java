@@ -1,15 +1,11 @@
 package com.jjchmielewski.tftarena.initializer;
 
-import com.jjchmielewski.tftarena.entitis.Game;
+import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
 import com.jjchmielewski.tftarena.repository.GameRepository;
-import jdk.jfr.Category;
 import lombok.Getter;
 import lombok.SneakyThrows;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Scope;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
-import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
