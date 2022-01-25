@@ -1,13 +1,13 @@
 package com.jjchmielewski.tftarena.initializer;
 
-import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
 import com.jjchmielewski.tftarena.entitis.documents.TeamComp;
+import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
 import com.jjchmielewski.tftarena.entitis.nodes.Team;
 import com.jjchmielewski.tftarena.entitis.nodes.relationships.TeamRelationship;
 import com.jjchmielewski.tftarena.repository.GameRepository;
-import com.jjchmielewski.tftarena.repository.TeamNEO4JRepository;
 import com.jjchmielewski.tftarena.repository.TeamRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
@@ -16,29 +16,55 @@ import java.util.*;
 @Component
 public class GraphBuilder {
 
-    private final TeamRepository teamRepository;
+    private final String apiKey;
 
-    private final DataCollector dataCollector;
+    private final TeamRepository teamRepository;
 
     private final GameRepository gameRepository;
 
-    private final TeamNEO4JRepository teamNEO4JRepository;
 
     @Autowired
-    public GraphBuilder(TeamRepository teamRepository, DataCollector dataCollector, GameRepository gameRepository, TeamNEO4JRepository teamNEO4JRepository) {
+    public GraphBuilder(TeamRepository teamRepository, GameRepository gameRepository, @Value("${tftarena.riot-games.api-key}") String apiKey) {
         this.teamRepository = teamRepository;
-        this.dataCollector = dataCollector;
         this.gameRepository = gameRepository;
-        this.teamNEO4JRepository = teamNEO4JRepository;
+        this.apiKey=apiKey;
     }
 
 
     @PostConstruct
     public void init() {
 
-        //dataCollector.start();
+        collectData();
         //buildTest();
-        getData();
+        //getData();
+    }
+
+    public void collectData(){
+        String urlDiamondEU  = "https://euw1.api.riotgames.com/tft/league/v1/entries/DIAMOND/I?page=";
+        String urlSummonersEU = "https://euw1.api.riotgames.com/tft/summoner/v1/summoners/";
+        String urlSummonerMatchesEU = "https://europe.api.riotgames.com/tft/match/v1/matches/by-puuid/";
+        String urlMatchDetailsEU = "https://europe.api.riotgames.com/tft/match/v1/matches/";
+
+        String urlDiamondUS  = "https://na1.api.riotgames.com/tft/league/v1/entries/DIAMOND/I?page=";
+        String urlSummonersUS = "https://na1.api.riotgames.com/tft/summoner/v1/summoners/";
+        String urlSummonerMatchesUS = "https://americas.api.riotgames.com/tft/match/v1/matches/by-puuid/";
+        String urlMatchDetailsUS = "https://americas.api.riotgames.com/tft/match/v1/matches/";
+
+        String urlDiamondAsia  = "https://kr.api.riotgames.com/tft/league/v1/entries/DIAMOND/I?page=";
+        String urlSummonersAsia = "https://kr.api.riotgames.com/tft/summoner/v1/summoners/";
+        String urlSummonerMatchesAsia = "https://asia.api.riotgames.com/tft/match/v1/matches/by-puuid/";
+        String urlMatchDetailsAsia = "https://asia.api.riotgames.com/tft/match/v1/matches/";
+
+
+        DataCollector dataCollectorEU = new DataCollector(this.gameRepository,apiKey,urlDiamondEU,urlSummonersEU,urlSummonerMatchesEU,urlMatchDetailsEU);
+        DataCollector dataCollectorUS = new DataCollector(this.gameRepository,apiKey,urlDiamondUS,urlSummonersUS,urlSummonerMatchesUS,urlMatchDetailsUS);
+        DataCollector dataCollectorAsia = new DataCollector(this.gameRepository,apiKey,urlDiamondAsia,urlSummonersAsia,urlSummonerMatchesAsia,urlMatchDetailsAsia);
+
+        gameRepository.deleteAll();
+
+        dataCollectorEU.start();
+        dataCollectorUS.start();
+        dataCollectorAsia.start();
     }
 
     public void buildTest(){
@@ -53,7 +79,6 @@ public class GraphBuilder {
 
 
         for(Game game : games) {
-
 
             TeamComp[] teams = game.getInfo().getParticipants();
 
@@ -139,7 +164,7 @@ public class GraphBuilder {
 
         System.out.println(nodeTeams.size() == strengthList2D.size());
 
-        teamNEO4JRepository.deleteAll();
+        teamRepository.deleteAll();
 
         System.out.println("Delete done");
 
@@ -151,9 +176,7 @@ public class GraphBuilder {
 
     public void getData(){
 
-        //System.out.println(teamNEO4JRepository.findByName("Chemtech5").getEnemyTeams().get(60).getEnemyTeam());
-
-        List<Team> teams = teamNEO4JRepository.findStrength( new String[]{"Set6_Bodyguard_1_TFT6_Kaisa_2", "Set6_Innovator_4_TFT6_Ezreal_3", "Set6_Assassin_2_TFT6_Akali_2", "Set6_Syndicate_3_TFT6_Akali_1", "Set6_Chemtech_3_TFT6_Viktor_1", "Set6_Bruiser_2_TFT6_KogMaw_2", "Set6_Sniper_3_TFT6_Jhin_1", "Set6_Yordle_1_TFT6_Orianna_1"});
+        List<Team> teams = teamRepository.getMatchInfo( new String[]{"Bodyguard_1_Kaisa_2", "Innovator_4_Ezreal_3", "Assassin_2_Akali_2", "Syndicate_3_Akali_1", "Chemtech_3_Viktor_1", "Bruiser_2_KogMaw_2", "Sniper_3_Jhin_1", "Yordle_1_Orianna_1"});
 
         System.out.println(teams);
 

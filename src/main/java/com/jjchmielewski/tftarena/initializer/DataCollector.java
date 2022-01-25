@@ -1,15 +1,12 @@
 package com.jjchmielewski.tftarena.initializer;
 
 import com.jjchmielewski.tftarena.entitis.documents.Summoner;
+import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
 import com.jjchmielewski.tftarena.repository.GameRepository;
-import lombok.SneakyThrows;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
@@ -18,117 +15,103 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-@Component
 public class DataCollector extends Thread{
 
-    @Value("${tftarena.riot-games.api-key}")
-    private String apiKey;
 
-    @Autowired
-    private GameRepository gameRepository;
+    private final String apiKey;
 
-    public DataCollector() {    }
+    private final int playerPages = 10;
+    private final int matcherPerPlayer = 10;
+
+    private final GameRepository gameRepository;
+
+    private final String urlDiamond;
+
+    private final String urlSummoner;
+
+    private final String urlSummonerMatches;
+
+    private final String urlMatchDetails;
+
+    public DataCollector(GameRepository gameRepository,String apiKey, String urlDiamond, String urlSummoner, String urlSummonerMatches, String urlMatchDetails) {
+        this.gameRepository = gameRepository;
+        this.urlDiamond = urlDiamond;
+        this.urlSummoner = urlSummoner;
+        this.urlSummonerMatches = urlSummonerMatches;
+        this.urlMatchDetails = urlMatchDetails;
+        this.apiKey=apiKey;
+    }
 
     public void collectData() throws InterruptedException {
-
-        System.out.println(this.apiKey);
 
         final RestTemplate restTemplate = new RestTemplate();
         final HttpHeaders headers = new HttpHeaders();
         headers.add("X-Riot-Token", this.apiKey);
         final HttpEntity<String> request = new HttpEntity<>(headers);
 
-        final String urlDiamondEU = "https://euw1.api.riotgames.com/tft/league/v1/entries/DIAMOND/I?page=";
-        final String urlDiamondUS = "https://na1.api.riotgames.com/tft/league/v1/entries/DIAMOND/I?page=";
-        final String urlDiamondAsia = "https://kr.api.riotgames.com/tft/league/v1/entries/DIAMOND/I?page=";
+        List<Summoner> diamondSummoners = new ArrayList<>();
 
-        final String urlSummonerEU = "https://euw1.api.riotgames.com/tft/summoner/v1/summoners/";
-        final String urlSummonerAsia = "https://kr.api.riotgames.com/tft/summoner/v1/summoners/";
-        final String urlSummonerUS = "https://na1.api.riotgames.com/tft/summoner/v1/summoners/";
+        for(int i = 1; i<= playerPages; i++){
+            ResponseEntity<Summoner[]> responseDiamond = restTemplate.exchange(urlDiamond +i,HttpMethod.GET,request,Summoner[].class);
 
-        final String urlSummonerMatchUS = "https://americas.api.riotgames.com/tft/match/v1/matches/by-puuid/";
-        final String urlSummonerMatchAsia = "https://asia.api.riotgames.com/tft/match/v1/matches/by-puuid/";
-        final String urlSummonerMatchEU = "https://europe.api.riotgames.com/tft/match/v1/matches/by-puuid/";
-
-
-        List<Summoner> diamondSummonersEU = new ArrayList<>();
-        List<Summoner> diamondSummonersUS = new ArrayList<>();
-        List<Summoner> diamondSummonersAsia = new ArrayList<>();
-
-        for(int i=1;i<=10;i++){
-            ResponseEntity<Summoner[]> responseDiamondEU = restTemplate.exchange(urlDiamondEU+i,HttpMethod.GET,request,Summoner[].class);
-            ResponseEntity<Summoner[]> responseDiamondUS = restTemplate.exchange(urlDiamondUS+i,HttpMethod.GET,request,Summoner[].class);
-            ResponseEntity<Summoner[]> responseDiamondAsia = restTemplate.exchange(urlDiamondAsia+i, HttpMethod.GET,request,Summoner[].class);
-
-            if(responseDiamondEU.getBody() != null)
-                diamondSummonersEU.addAll(Arrays.asList(responseDiamondEU.getBody()));
-            if(responseDiamondUS.getBody() != null)
-                diamondSummonersUS.addAll(Arrays.asList(responseDiamondUS.getBody()));
-            if(responseDiamondAsia.getBody() != null)
-                diamondSummonersAsia.addAll(Arrays.asList(responseDiamondAsia.getBody()));
+            if(responseDiamond.getBody() != null)
+                diamondSummoners.addAll(Arrays.asList(responseDiamond.getBody()));
 
             TimeUnit.MILLISECONDS.sleep(1300);
         }
 
-        System.out.println("summoners1");
+        System.out.println("Collected diamond summoners in thread: "+this.getId());
 
-        for(int i=0; i<diamondSummonersUS.size(); i++){
-            diamondSummonersEU.set(i,restTemplate.exchange(urlSummonerEU+diamondSummonersEU.get(i).getSummonerId(),HttpMethod.GET,request,Summoner.class).getBody());
-            diamondSummonersUS.set(i,restTemplate.exchange(urlSummonerUS+diamondSummonersUS.get(i).getSummonerId(),HttpMethod.GET,request,Summoner.class).getBody());
-            diamondSummonersAsia.set(i,restTemplate.exchange(urlSummonerAsia+diamondSummonersAsia.get(i).getSummonerId(),HttpMethod.GET,request,Summoner.class).getBody());
+        for(int i=0; i<diamondSummoners.size(); i++){
+            diamondSummoners.set(i,restTemplate.exchange(urlSummoner +diamondSummoners.get(i).getSummonerId(),HttpMethod.GET,request,Summoner.class).getBody());
 
             TimeUnit.MILLISECONDS.sleep(1300);
         }
 
-        System.out.println("summoners2");
+        System.out.println("Collected summoner details in thread: "+this.getId());
 
-        List<String> matchListDiamondUS = new ArrayList<>();
-        List<String> matchListDiamondAsia = new ArrayList<>();
-        List<String> matchListDiamondEU = new ArrayList<>();
+        List<String> matchListDiamond = new ArrayList<>();
 
-        for(int i=0; i<diamondSummonersUS.size();i++){
-            String[] matchesDiamondEU = restTemplate.exchange(urlSummonerMatchEU+diamondSummonersEU.get(i).getPuuid()+"/ids?count=10",HttpMethod.GET,request,String[].class).getBody();
-            String[] matchesDiamondUS = restTemplate.exchange(urlSummonerMatchUS+diamondSummonersUS.get(i).getPuuid()+"/ids?count=10",HttpMethod.GET,request,String[].class).getBody();
-            String[] matchesDiamondAsia = restTemplate.exchange(urlSummonerMatchAsia+diamondSummonersAsia.get(i).getPuuid()+"/ids?count=10",HttpMethod.GET,request,String[].class).getBody();
+        for (Summoner diamondSummoner : diamondSummoners) {
+            String[] matchesDiamond = restTemplate.exchange(urlSummonerMatches + diamondSummoner.getPuuid() + "/ids?count="+ matcherPerPlayer, HttpMethod.GET, request, String[].class).getBody();
 
-            if(matchesDiamondUS!=null)
-                matchListDiamondUS.addAll(Arrays.asList(matchesDiamondUS));
-            if(matchesDiamondAsia!=null)
-                matchListDiamondAsia.addAll(Arrays.asList(matchesDiamondAsia));
-            if(matchesDiamondEU!=null)
-                matchListDiamondEU.addAll(Arrays.asList(matchesDiamondEU));
+            if (matchesDiamond != null)
+                matchListDiamond.addAll(Arrays.asList(matchesDiamond));
 
             TimeUnit.MILLISECONDS.sleep(1300);
         }
 
-        System.out.println("matches");
+        System.out.println("Collected match list in thread: "+this.getId());
 
-        matchListDiamondUS = new ArrayList<>(new HashSet<>(matchListDiamondUS));
-        matchListDiamondAsia = new ArrayList<>(new HashSet<>(matchListDiamondAsia));
-        matchListDiamondEU = new ArrayList<>(new HashSet<>(matchListDiamondEU));
+        matchListDiamond = new ArrayList<>(new HashSet<>(matchListDiamond));
 
-        DataCollectorSubThread subThreadUS = new DataCollectorSubThread(matchListDiamondUS, "https://americas.api.riotgames.com/tft/match/v1/matches/", request, gameRepository);
-        DataCollectorSubThread subThreadAsia = new DataCollectorSubThread(matchListDiamondAsia, "https://asia.api.riotgames.com/tft/match/v1/matches/",request, gameRepository);
-        DataCollectorSubThread subThreadEU = new DataCollectorSubThread(matchListDiamondEU, "https://europe.api.riotgames.com/tft/match/v1/matches/",request, gameRepository);
 
-        gameRepository.deleteAll();
+        System.out.println("Starting to download matches in thread: "+this.getId());
 
-        subThreadUS.start();
-        subThreadAsia.start();
-        subThreadEU.start();
+        for(String match : matchListDiamond){
+            try{
+                TimeUnit.MILLISECONDS.sleep(1300);
 
-        subThreadUS.join();
-        subThreadAsia.join();
-        subThreadEU.join();
+                Game temp = restTemplate.exchange(urlMatchDetails +match, HttpMethod.GET,request,Game.class).getBody();
 
-        System.out.println("Data collection successful");
+                if(temp!=null)
+                    gameRepository.save(temp);
+
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+
+        System.out.println("Data collection successful in thread: "+this.getId());
 
     }
 
-    @SneakyThrows
     public void run(){
-
-        this.collectData();
+        try{
+            this.collectData();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
     }
 
 }
