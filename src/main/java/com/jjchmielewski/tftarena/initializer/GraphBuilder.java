@@ -34,7 +34,7 @@ public class GraphBuilder {
     @PostConstruct
     public void init() {
 
-        collectData();
+        //collectData();
         //buildTest();
         //getData();
     }

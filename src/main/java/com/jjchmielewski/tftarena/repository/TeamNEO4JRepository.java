@@ -2,7 +2,6 @@ package com.jjchmielewski.tftarena.repository;
 
 
 import com.jjchmielewski.tftarena.entitis.nodes.Team;
-import com.jjchmielewski.tftarena.entitis.nodes.relationships.TeamRelationship;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.data.repository.query.Param;
