@@ -14,7 +14,7 @@ import javax.annotation.PostConstruct;
 import java.util.*;
 
 @Component
-public class GraphBuilder {
+public class GraphBuilder implements Runnable{
 
     private final TeamRepository teamRepository;
 
@@ -36,9 +36,17 @@ public class GraphBuilder {
     @PostConstruct
     public void init() {
 
+        Thread graphBuilderThread = new Thread(this);
+
+        graphBuilderThread.start();
+
+    }
+
+    @Override
+    public void run() {
         //dataCollector.start();
-        //buildTest();
-        getData();
+        buildTest();
+        //getData();
     }
 
     public void buildTest(){
@@ -184,4 +192,6 @@ public class GraphBuilder {
 
         System.out.println(sorted);
     }
+
+
 }
