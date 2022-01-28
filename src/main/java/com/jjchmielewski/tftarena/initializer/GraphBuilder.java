@@ -34,7 +34,7 @@ public class GraphBuilder implements Runnable{
                         @Value("${tftarena.riot-games.api-key}") String apiKey,
                         @Value("${tftarena.buildGraph}") boolean buildGraph,
                         @Value("${tftarena.saveGames}") boolean saveGames,
-                        @Value("{tftarena.collectData}") boolean collectData) {
+                        @Value("${tftarena.collectData}") boolean collectData) {
 
         this.teamRepository = teamRepository;
         this.gameRepository = gameRepository;
