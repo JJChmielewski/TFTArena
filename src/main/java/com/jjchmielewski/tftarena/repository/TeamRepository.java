@@ -21,13 +21,13 @@ public class TeamRepository {
     private String unitPrefix;
 
 
-    public void saveGraph(List<Team> nodes){
+    public void saveGraph(List<Team> teams){
 
-        for(Team t : nodes){
+        for(Team t : teams){
             teamNEO4JRepository.saveNodes(t.getName());
         }
 
-        for(Team t: nodes){
+        for(Team t: teams){
             for(TeamRelationship r : t.getEnemyTeams()){
                 teamNEO4JRepository.saveRelationships(t.getName(),r.getEnemyTeam().getName(),r.getStrength());
             }

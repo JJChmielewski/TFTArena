@@ -121,10 +121,10 @@ public class GraphBuilder implements Runnable{
     public void buildTest(List<Game> games){
 
         List<String> teamNames = new ArrayList<>();
-        List<List<double[]>> strengthList2D = new ArrayList<>();
-        List<Team> nodeTeams = new ArrayList<>();
+        double[][][] strengthMatrix;
 
 
+        //matrix building
         for(Game game : games) {
 
             TeamComp[] teams = game.getInfo().getParticipants();
@@ -137,15 +137,16 @@ public class GraphBuilder implements Runnable{
             for (TeamComp teamComp : teams) {
                 if (!teamNames.contains(teamComp.getTeamName())) {
                     teamNames.add(teamComp.getTeamName());
-                    strengthList2D.add(new ArrayList<>());
-                    for (int x = 0; x < strengthList2D.size(); x++) {
-                        for (int y = strengthList2D.get(x).size(); y < strengthList2D.size(); y++) {
-                            strengthList2D.get(x).add(new double[3]);
-                        }
-                    }
                 }
             }
+        }
 
+        strengthMatrix = new double[teamNames.size()][teamNames.size()][3];
+
+
+        //fill the matrix
+        for(Game game:games){
+            TeamComp[] teams = game.getInfo().getParticipants();
             for (TeamComp team : teams) {
 
                 int teamIndex = teamNames.indexOf(team.getTeamName());
@@ -154,68 +155,94 @@ public class GraphBuilder implements Runnable{
                     int enemyTeamIndex = teamNames.indexOf(enemyTeam.getTeamName());
 
 
-                    strengthList2D.get(teamIndex).get(enemyTeamIndex)[0] += team.getPlacement() - enemyTeam.getPlacement();
-                    strengthList2D.get(teamIndex).get(enemyTeamIndex)[1]++;
+                    strengthMatrix[teamIndex][enemyTeamIndex][0] += team.getPlacement() - enemyTeam.getPlacement();
+                    strengthMatrix[teamIndex][enemyTeamIndex][1]++;
 
                 }
-                strengthList2D.get(teamIndex).get(teamIndex)[2]++;
+                strengthMatrix[teamIndex][teamIndex][2]++;
             }
         }
 
+
+
+        //remove irrelevant teams
         for(int i=0;i< teamNames.size();i++){
 
             double minPercent = 0.15;
 
-            if(strengthList2D.get(i).get(i)[2] < games.size()/100.0 * minPercent || teamNames.get(i).equals("No team")){
-                for(List<double[]> l : strengthList2D){
-                    l.remove(i);
+            if(strengthMatrix[i][i][2] < games.size()/100.0 * minPercent || teamNames.get(i).equals("No team")){
+                for(int j=0;j<strengthMatrix.length;j++){
+
+                    if (strengthMatrix[j] != null) {
+                        strengthMatrix[j][i] = null;
+                    }
+
                 }
-                strengthList2D.remove(i);
-                teamNames.remove(i);
-                i--;
+                strengthMatrix[i] = null;
             }
 
         }
 
 
-        for (int i = 0; i < strengthList2D.size(); i++) {
-            for (int j = 0; j < strengthList2D.size(); j++) {
-                System.out.print(Arrays.toString(strengthList2D.get(i).get(j)) + " ");
+        //display matrix
+        /*
+        for (int i = 0; i < strengthMatrix.length; i++) {
+            for (int j = 0; j < strengthMatrix.length; j++) {
+                if (strengthMatrix[i] != null) {
+                    System.out.print(Arrays.toString(strengthMatrix[i][j]) + " ");
+                }
             }
             System.out.print("\n");
         }
 
+         */
 
-        for (String s : teamNames) {
-            nodeTeams.add(new Team(s));
+        System.out.println("Matrix finished");
+
+        Team[] teams = new Team[strengthMatrix.length];
+
+        //build nodes and relationships
+        for (int i=0;i<strengthMatrix.length;i++) {
+            if(strengthMatrix[i] == null)
+                continue;
+
+            teams[i] = new Team(teamNames.get(i));
         }
 
+        List<Team> validTeams = new ArrayList<>();
 
-        for (int i = 0; i < nodeTeams.size(); i++) {
+        for (int i = 0; i < teamNames.size(); i++) {
 
-            for (int j = 0; j < nodeTeams.size(); j++) {
-                TeamRelationship teamRelationship = new TeamRelationship(nodeTeams.get(j));
+            if(strengthMatrix[i] == null)
+                continue;
+
+            for (int j = 0; j < teams.length; j++) {
+
+                if(strengthMatrix[i][j] == null)
+                    continue;
+
+                TeamRelationship teamRelationship = new TeamRelationship(teams[j]);
                 double strength;
 
-                if (strengthList2D.get(i).get(j)[1] != 0)
-                    strength = strengthList2D.get(i).get(j)[0] / strengthList2D.get(i).get(j)[1];
+                if (strengthMatrix[i][j][1] != 0)
+                    strength = strengthMatrix[i][j][0] / strengthMatrix[i][j][1];
                 else
                     strength = 0;
 
                 teamRelationship.setStrength(strength);
-                nodeTeams.get(i).addEnemyTeams(teamRelationship);
+                teams[i].addEnemyTeams(teamRelationship);
             }
+
+            validTeams.add(teams[i]);
         }
 
-        System.out.println(nodeTeams.size());
-
-        System.out.println(nodeTeams.size() == strengthList2D.size());
+        System.out.println(validTeams.size());
 
         teamRepository.deleteAll();
 
         System.out.println("Delete done");
 
-        teamRepository.saveGraph(nodeTeams);
+        teamRepository.saveGraph(validTeams);
 
         System.out.println("Save done");
 
