@@ -155,7 +155,7 @@ public class GraphBuilder implements Runnable{
                     int enemyTeamIndex = teamNames.indexOf(enemyTeam.getTeamName());
 
 
-                    strengthMatrix[teamIndex][enemyTeamIndex][0] += team.getPlacement() - enemyTeam.getPlacement();
+                    strengthMatrix[teamIndex][enemyTeamIndex][0] += enemyTeam.getPlacement() - team.getPlacement();
                     strengthMatrix[teamIndex][enemyTeamIndex][1]++;
 
                 }
@@ -252,7 +252,7 @@ public class GraphBuilder implements Runnable{
 
         List<Team> teams = teamRepository.getMatchInfo( new String[]{"Bodyguard_1_Kaisa_2", "Innovator_4_Ezreal_3", "Assassin_2_Akali_2", "Syndicate_3_Akali_1", "Chemtech_3_Viktor_1", "Bruiser_2_KogMaw_2", "Sniper_3_Jhin_1", "Yordle_1_Orianna_1"});
 
-        System.out.println(teams);
+        //System.out.println(teams);
 
         HashMap<String, Double> strength = new HashMap<>();
 
@@ -268,7 +268,7 @@ public class GraphBuilder implements Runnable{
         sorted.sort(new Comparator<>() {
             @Override
             public int compare(Map.Entry<String, Double> o1, Map.Entry<String, Double> o2) {
-                if (o1.getValue() < o2.getValue())
+                if (o1.getValue() > o2.getValue())
                     return -1;
                 else
                     if(o1.getValue().equals(o2.getValue())) {
