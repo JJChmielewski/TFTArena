@@ -14,7 +14,7 @@ import javax.annotation.PostConstruct;
 import java.util.*;
 
 @Component
-public class GraphBuilder {
+public class GraphBuilder implements Runnable{
 
     private final String apiKey;
 
@@ -22,24 +22,63 @@ public class GraphBuilder {
 
     private final GameRepository gameRepository;
 
+    private final boolean buildGraph;
+
+    private final boolean saveGames;
+
+    private final boolean collectData;
+
 
     @Autowired
-    public GraphBuilder(TeamRepository teamRepository, GameRepository gameRepository, @Value("${tftarena.riot-games.api-key}") String apiKey) {
+    public GraphBuilder(TeamRepository teamRepository, GameRepository gameRepository,
+                        @Value("${tftarena.riot-games.api-key}") String apiKey,
+                        @Value("${tftarena.buildGraph}") boolean buildGraph,
+                        @Value("${tftarena.saveGames}") boolean saveGames,
+                        @Value("${tftarena.collectData}") boolean collectData) {
+
         this.teamRepository = teamRepository;
         this.gameRepository = gameRepository;
         this.apiKey=apiKey;
+        this.buildGraph = buildGraph;
+        this.saveGames = saveGames;
+        this.collectData = collectData;
     }
 
 
     @PostConstruct
     public void init() {
 
-        //collectData();
-        //buildTest();
-        //getData();
+
+        Thread graphBuilderThread = new Thread(this);
+
+        graphBuilderThread.start();
+
+
     }
 
-    public void collectData(){
+    @Override
+    public void run() {
+
+        if(buildGraph) {
+            try{
+                List<Game> gatheredGames;
+
+                if(collectData)
+                    gatheredGames = collectData();
+                else
+                    gatheredGames = gameRepository.findAll();
+
+                buildTest(gatheredGames);
+
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+
+        getData();
+    }
+
+    public List<Game> collectData() throws InterruptedException {
         String urlDiamondEU  = "https://euw1.api.riotgames.com/tft/league/v1/entries/DIAMOND/I?page=";
         String urlSummonersEU = "https://euw1.api.riotgames.com/tft/summoner/v1/summoners/";
         String urlSummonerMatchesEU = "https://europe.api.riotgames.com/tft/match/v1/matches/by-puuid/";
@@ -56,28 +95,38 @@ public class GraphBuilder {
         String urlMatchDetailsAsia = "https://asia.api.riotgames.com/tft/match/v1/matches/";
 
 
-        DataCollector dataCollectorEU = new DataCollector(this.gameRepository,apiKey,urlDiamondEU,urlSummonersEU,urlSummonerMatchesEU,urlMatchDetailsEU);
-        DataCollector dataCollectorUS = new DataCollector(this.gameRepository,apiKey,urlDiamondUS,urlSummonersUS,urlSummonerMatchesUS,urlMatchDetailsUS);
-        DataCollector dataCollectorAsia = new DataCollector(this.gameRepository,apiKey,urlDiamondAsia,urlSummonersAsia,urlSummonerMatchesAsia,urlMatchDetailsAsia);
+        DataCollector dataCollectorEU = new DataCollector(this.gameRepository,apiKey,urlDiamondEU,urlSummonersEU,urlSummonerMatchesEU,urlMatchDetailsEU,saveGames);
+        DataCollector dataCollectorUS = new DataCollector(this.gameRepository,apiKey,urlDiamondUS,urlSummonersUS,urlSummonerMatchesUS,urlMatchDetailsUS,saveGames);
+        DataCollector dataCollectorAsia = new DataCollector(this.gameRepository,apiKey,urlDiamondAsia,urlSummonersAsia,urlSummonerMatchesAsia,urlMatchDetailsAsia,saveGames);
 
-        gameRepository.deleteAll();
+        if(saveGames)
+            gameRepository.deleteAll();
 
         dataCollectorEU.start();
         dataCollectorUS.start();
         dataCollectorAsia.start();
+
+        dataCollectorEU.join();
+        dataCollectorUS.join();
+        dataCollectorAsia.join();
+
+        List<Game> gatheredGames = new ArrayList<>();
+
+        gatheredGames.addAll(dataCollectorEU.getGatheredGames());
+        gatheredGames.addAll(dataCollectorUS.getGatheredGames());
+        gatheredGames.addAll(dataCollectorAsia.getGatheredGames());
+
+
+        return gatheredGames;
     }
 
-    public void buildTest(){
+    public void buildTest(List<Game> games){
 
         List<String> teamNames = new ArrayList<>();
-        List<List<double[]>> strengthList2D = new ArrayList<>();
-        List<Team> nodeTeams = new ArrayList<>();
-
-        System.out.println("lol");
-
-        List<Game> games = gameRepository.findAll();
+        double[][][] strengthMatrix;
 
 
+        //matrix building
         for(Game game : games) {
 
             TeamComp[] teams = game.getInfo().getParticipants();
@@ -90,15 +139,16 @@ public class GraphBuilder {
             for (TeamComp teamComp : teams) {
                 if (!teamNames.contains(teamComp.getTeamName())) {
                     teamNames.add(teamComp.getTeamName());
-                    strengthList2D.add(new ArrayList<>());
-                    for (int x = 0; x < strengthList2D.size(); x++) {
-                        for (int y = strengthList2D.get(x).size(); y < strengthList2D.size(); y++) {
-                            strengthList2D.get(x).add(new double[3]);
-                        }
-                    }
                 }
             }
+        }
 
+        strengthMatrix = new double[teamNames.size()][teamNames.size()][3];
+
+
+        //fill the matrix
+        for(Game game:games){
+            TeamComp[] teams = game.getInfo().getParticipants();
             for (TeamComp team : teams) {
 
                 int teamIndex = teamNames.indexOf(team.getTeamName());
@@ -107,68 +157,94 @@ public class GraphBuilder {
                     int enemyTeamIndex = teamNames.indexOf(enemyTeam.getTeamName());
 
 
-                    strengthList2D.get(teamIndex).get(enemyTeamIndex)[0] += team.getPlacement() - enemyTeam.getPlacement();
-                    strengthList2D.get(teamIndex).get(enemyTeamIndex)[1]++;
+                    strengthMatrix[teamIndex][enemyTeamIndex][0] += enemyTeam.getPlacement() - team.getPlacement();
+                    strengthMatrix[teamIndex][enemyTeamIndex][1]++;
 
                 }
-                strengthList2D.get(teamIndex).get(teamIndex)[2]++;
+                strengthMatrix[teamIndex][teamIndex][2]++;
             }
         }
 
+
+
+        //remove irrelevant teams
         for(int i=0;i< teamNames.size();i++){
 
             double minPercent = 0.15;
 
-            if(strengthList2D.get(i).get(i)[2] < games.size()/100.0 * minPercent || teamNames.get(i).equals("No team")){
-                for(List<double[]> l : strengthList2D){
-                    l.remove(i);
+            if(strengthMatrix[i][i][2] < games.size()/100.0 * minPercent || teamNames.get(i).equals("No team")){
+                for(int j=0;j<strengthMatrix.length;j++){
+
+                    if (strengthMatrix[j] != null) {
+                        strengthMatrix[j][i] = null;
+                    }
+
                 }
-                strengthList2D.remove(i);
-                teamNames.remove(i);
-                i--;
+                strengthMatrix[i] = null;
             }
 
         }
 
 
-        for (int i = 0; i < strengthList2D.size(); i++) {
-            for (int j = 0; j < strengthList2D.size(); j++) {
-                System.out.print(Arrays.toString(strengthList2D.get(i).get(j)) + " ");
+        //display matrix
+        /*
+        for (int i = 0; i < strengthMatrix.length; i++) {
+            for (int j = 0; j < strengthMatrix.length; j++) {
+                if (strengthMatrix[i] != null) {
+                    System.out.print(Arrays.toString(strengthMatrix[i][j]) + " ");
+                }
             }
             System.out.print("\n");
         }
 
+         */
 
-        for (String s : teamNames) {
-            nodeTeams.add(new Team(s));
+        System.out.println("Matrix finished");
+
+        Team[] teams = new Team[strengthMatrix.length];
+
+        //build nodes and relationships
+        for (int i=0;i<strengthMatrix.length;i++) {
+            if(strengthMatrix[i] == null)
+                continue;
+
+            teams[i] = new Team(teamNames.get(i));
         }
 
+        List<Team> validTeams = new ArrayList<>();
 
-        for (int i = 0; i < nodeTeams.size(); i++) {
+        for (int i = 0; i < teamNames.size(); i++) {
 
-            for (int j = 0; j < nodeTeams.size(); j++) {
-                TeamRelationship teamRelationship = new TeamRelationship(nodeTeams.get(j));
+            if(strengthMatrix[i] == null)
+                continue;
+
+            for (int j = 0; j < teams.length; j++) {
+
+                if(strengthMatrix[i][j] == null)
+                    continue;
+
+                TeamRelationship teamRelationship = new TeamRelationship(teams[j]);
                 double strength;
 
-                if (strengthList2D.get(i).get(j)[1] != 0)
-                    strength = strengthList2D.get(i).get(j)[0] / strengthList2D.get(i).get(j)[1];
+                if (strengthMatrix[i][j][1] != 0)
+                    strength = strengthMatrix[i][j][0] / strengthMatrix[i][j][1];
                 else
                     strength = 0;
 
                 teamRelationship.setStrength(strength);
-                nodeTeams.get(i).addEnemyTeams(teamRelationship);
+                teams[i].addEnemyTeams(teamRelationship);
             }
+
+            validTeams.add(teams[i]);
         }
 
-        System.out.println(nodeTeams.size());
-
-        System.out.println(nodeTeams.size() == strengthList2D.size());
+        System.out.println(validTeams.size());
 
         teamRepository.deleteAll();
 
         System.out.println("Delete done");
 
-        teamRepository.saveGraph(nodeTeams);
+        teamRepository.saveGraph(validTeams);
 
         System.out.println("Save done");
 
@@ -178,7 +254,7 @@ public class GraphBuilder {
 
         List<Team> teams = teamRepository.getMatchInfo( new String[]{"Bodyguard_1_Kaisa_2", "Innovator_4_Ezreal_3", "Assassin_2_Akali_2", "Syndicate_3_Akali_1", "Chemtech_3_Viktor_1", "Bruiser_2_KogMaw_2", "Sniper_3_Jhin_1", "Yordle_1_Orianna_1"});
 
-        System.out.println(teams);
+        //System.out.println(teams);
 
         HashMap<String, Double> strength = new HashMap<>();
 
@@ -194,7 +270,7 @@ public class GraphBuilder {
         sorted.sort(new Comparator<>() {
             @Override
             public int compare(Map.Entry<String, Double> o1, Map.Entry<String, Double> o2) {
-                if (o1.getValue() < o2.getValue())
+                if (o1.getValue() > o2.getValue())
                     return -1;
                 else
                     if(o1.getValue().equals(o2.getValue())) {
@@ -207,4 +283,6 @@ public class GraphBuilder {
 
         System.out.println(sorted);
     }
+
+
 }

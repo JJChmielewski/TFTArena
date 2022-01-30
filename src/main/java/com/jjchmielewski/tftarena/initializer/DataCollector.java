@@ -17,7 +17,6 @@ import java.util.concurrent.TimeUnit;
 
 public class DataCollector extends Thread{
 
-
     private final String apiKey;
 
     private final int playerPages = 10;
@@ -33,13 +32,19 @@ public class DataCollector extends Thread{
 
     private final String urlMatchDetails;
 
-    public DataCollector(GameRepository gameRepository,String apiKey, String urlDiamond, String urlSummoner, String urlSummonerMatches, String urlMatchDetails) {
+    private final boolean saveGames;
+
+    private List<Game> gatheredGames;
+
+    public DataCollector(GameRepository gameRepository,String apiKey, String urlDiamond, String urlSummoner, String urlSummonerMatches, String urlMatchDetails, boolean saveGames) {
         this.gameRepository = gameRepository;
         this.urlDiamond = urlDiamond;
         this.urlSummoner = urlSummoner;
         this.urlSummonerMatches = urlSummonerMatches;
         this.urlMatchDetails = urlMatchDetails;
         this.apiKey=apiKey;
+        this.saveGames = saveGames;
+        this.gatheredGames = new ArrayList<>();
     }
 
     public void collectData() throws InterruptedException {
@@ -94,8 +99,14 @@ public class DataCollector extends Thread{
 
                 Game temp = restTemplate.exchange(urlMatchDetails +match, HttpMethod.GET,request,Game.class).getBody();
 
-                if(temp!=null)
-                    gameRepository.save(temp);
+                if(temp!=null){
+                    if(saveGames)
+                        gameRepository.save(temp);
+
+                    gatheredGames.add(temp);
+
+                }
+
 
             }catch (Exception e){
                 e.printStackTrace();
@@ -104,6 +115,10 @@ public class DataCollector extends Thread{
 
         System.out.println("Data collection successful in thread: "+this.getId());
 
+    }
+
+    public List<Game> getGatheredGames() {
+        return gatheredGames;
     }
 
     public void run(){

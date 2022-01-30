@@ -5,6 +5,7 @@ import com.jjchmielewski.tftarena.entitis.nodes.relationships.TeamRelationship;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -21,13 +22,14 @@ public class TeamRepository {
     private String unitPrefix;
 
 
-    public void saveGraph(List<Team> nodes){
+    @Transactional
+    public void saveGraph(List<Team> teams){
 
-        for(Team t : nodes){
+        for(Team t: teams){
             teamNEO4JRepository.saveNodes(t.getName());
         }
 
-        for(Team t: nodes){
+        for(Team t: teams){
             for(TeamRelationship r : t.getEnemyTeams()){
                 teamNEO4JRepository.saveRelationships(t.getName(),r.getEnemyTeam().getName(),r.getStrength());
             }
