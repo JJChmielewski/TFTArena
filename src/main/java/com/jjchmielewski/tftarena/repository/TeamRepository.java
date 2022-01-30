@@ -1,7 +1,9 @@
 package com.jjchmielewski.tftarena.repository;
 
 import com.jjchmielewski.tftarena.entitis.nodes.Team;
+import com.jjchmielewski.tftarena.entitis.nodes.UnitNode;
 import com.jjchmielewski.tftarena.entitis.nodes.relationships.TeamRelationship;
+import com.jjchmielewski.tftarena.entitis.nodes.relationships.TeamUnitRelationship;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
@@ -15,6 +17,9 @@ public class TeamRepository {
     @Autowired
     private TeamNEO4JRepository teamNEO4JRepository;
 
+    @Autowired
+    private UnitNEO4JRepository unitNEO4JRepository;
+
     @Value("${tftarena.prefix.traitPrefix}")
     private String traitPrefix;
 
@@ -23,15 +28,22 @@ public class TeamRepository {
 
 
     @Transactional
-    public void saveGraph(List<Team> teams){
+    public void saveGraph(List<Team> teams, UnitNode[] units){
 
         for(Team t: teams){
-            teamNEO4JRepository.saveNodes(t.getName());
+            teamNEO4JRepository.saveNode(t.getName());
+        }
+        for(UnitNode unit: units){
+            if(unit!=null)
+                unitNEO4JRepository.saveUnit(unit.getName());
         }
 
         for(Team t: teams){
             for(TeamRelationship r : t.getEnemyTeams()){
-                teamNEO4JRepository.saveRelationships(t.getName(),r.getEnemyTeam().getName(),r.getStrength());
+                teamNEO4JRepository.saveTeamRelationships(t.getName(),r.getEnemyTeam().getName(),r.getStrength());
+            }
+            for(TeamUnitRelationship r : t.getUnits()){
+                teamNEO4JRepository.saveTeamUnitRelationship(t.getName(),r.getUnit().getName(),r.getWeight(),r.getPercentagePlayed());
             }
         }
 
@@ -39,6 +51,7 @@ public class TeamRepository {
 
     public void deleteAll(){
         teamNEO4JRepository.deleteAll();
+        unitNEO4JRepository.deleteAll();
     }
 
     public List<Team> getMatchInfo(String[] teams){
