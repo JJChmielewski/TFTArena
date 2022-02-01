@@ -3,10 +3,12 @@ package com.jjchmielewski.tftarena.initializer;
 import com.jjchmielewski.tftarena.entitis.documents.TeamComp;
 import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
 import com.jjchmielewski.tftarena.entitis.documents.unit.Unit;
+import com.jjchmielewski.tftarena.entitis.nodes.Item;
 import com.jjchmielewski.tftarena.entitis.nodes.Team;
 import com.jjchmielewski.tftarena.entitis.nodes.UnitNode;
 import com.jjchmielewski.tftarena.entitis.nodes.relationships.TeamRelationship;
 import com.jjchmielewski.tftarena.entitis.nodes.relationships.TeamUnitRelationship;
+import com.jjchmielewski.tftarena.entitis.nodes.relationships.UnitItemRelationship;
 import com.jjchmielewski.tftarena.repository.GameRepository;
 import com.jjchmielewski.tftarena.repository.TeamRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -125,8 +127,10 @@ public class GraphBuilder implements Runnable{
 
         List<String> teamNames = new ArrayList<>();
         List<String> unitNames = new ArrayList<>();
+        List<Integer> itemIndexes = new ArrayList<>();
         double[][][] strengthMatrix;
         double[][][] unitMatrix;
+        int[][][] itemMatrix;
 
         System.out.println("Starting");
 
@@ -149,6 +153,12 @@ public class GraphBuilder implements Runnable{
                     if(!unitNames.contains(unit.getCharacter_id()+"_"+unit.getTier())){
                         unitNames.add(unit.getCharacter_id() + "_" + unit.getTier());
                     }
+
+                    for(int item: unit.getItems()){
+                        if(!itemIndexes.contains(item))
+                            itemIndexes.add(item);
+                    }
+
                 }
             }
         }
@@ -156,8 +166,11 @@ public class GraphBuilder implements Runnable{
         //placement diff, times vs this team, times played over all (not 0 on the diagonal)
         strengthMatrix = new double[teamNames.size()][teamNames.size()][3];
 
-        //avg place when in, avg place when not, times played, times not played
+        //sum place when in, sum place when not, times played, times not played
         unitMatrix = new double[teamNames.size()][unitNames.size()][4];
+
+        //times played, times not played
+        itemMatrix = new int[unitNames.size()][itemIndexes.size()][1];
 
         System.out.println(unitNames.size());
 
@@ -180,8 +193,19 @@ public class GraphBuilder implements Runnable{
                 //analysing units in team
                 List<String> teamUnits = new ArrayList<>();
 
-                for(Unit unit : team.getUnits())
-                    teamUnits.add(unit.getCharacter_id()+"_"+unit.getTier());
+                //preping units, sorting out items
+                for(Unit unit : team.getUnits()) {
+                    String teamName = unit.getCharacter_id() + "_" + unit.getTier();
+                    teamUnits.add(teamName);
+
+                    //item matrix
+                    for(int item : unit.getItems()){
+
+                        if(itemIndexes.contains(item)){
+                            itemMatrix[unitNames.indexOf(teamName)][itemIndexes.indexOf(item)][0]++;
+                        }
+                    }
+                }
 
                 for(int unitIndex=0;unitIndex<unitNames.size();unitIndex++){
 
@@ -196,18 +220,18 @@ public class GraphBuilder implements Runnable{
                     }
                 }
 
+
                 strengthMatrix[teamIndex][teamIndex][2]++;
             }
         }
 
 
-
-        //remove irrelevant teams and units
+        //remove irrelevant teams
         for(int i=0;i< teamNames.size();i++){
 
             double minPercent = 0.15;
 
-            if(strengthMatrix[i][i][2] < games.size()/100.0 * minPercent || teamNames.get(i).equals("No team")){
+            if(strengthMatrix[i][i][2] <= games.size()/100.0 * minPercent || teamNames.get(i).equals("No team")){
                 for(int j=0;j<strengthMatrix.length;j++){
 
                     if (strengthMatrix[j] != null) {
@@ -217,15 +241,6 @@ public class GraphBuilder implements Runnable{
                 }
                 strengthMatrix[i] = null;
             }
-
-            //filer units that were played less than 20 times
-            for(int j=0;j< unitNames.size();j++){
-
-                if(unitMatrix[i][j][2] < 20){
-                    unitMatrix[i][j] = null;
-                }
-            }
-
         }
 
 
@@ -246,20 +261,20 @@ public class GraphBuilder implements Runnable{
 
         Team[] teams = new Team[strengthMatrix.length];
         UnitNode[] unitNodes = new UnitNode[unitNames.size()];
+        Item[] items = new Item[itemIndexes.size()];
 
         //build nodes
         for (int i=0;i<strengthMatrix.length;i++) {
-            if(strengthMatrix[i] == null)
-                continue;
 
             teams[i] = new Team(teamNames.get(i));
+        }
+        for(int j=0;j<unitNodes.length;j++){
 
-            for(int j=0;j<unitNodes.length;j++){
-                if(unitMatrix[i][j] == null)
-                    continue;
+            unitNodes[j] = new UnitNode(unitNames.get(j));
 
-                unitNodes[j] = new UnitNode(unitNames.get(j));
-            }
+        }
+        for(int k=0;k<items.length;k++){
+            items[k] = new Item(itemIndexes.get(k));
         }
 
 
@@ -292,7 +307,7 @@ public class GraphBuilder implements Runnable{
             //team-unit relationship
             for(int j=0; j < unitNodes.length;j++){
 
-                if(unitMatrix[i][j] == null)
+                if(unitMatrix[i][j][2] < 1)
                     continue;
 
                 double weight, percentagePlayed;
@@ -311,20 +326,27 @@ public class GraphBuilder implements Runnable{
                 teams[i].addUnit(teamUnitRelationship);
             }
 
-            if(teams[i].getUnits() == null)
-                System.out.println(teams[i].getName());
-
             validTeams.add(teams[i]);
+        }
+        //unit-item relationship
+        for(int i=0; i< unitNodes.length;i++){
+            for(int j=0;j< items.length;j++){
+                if(itemMatrix[i][j][0] < 1)
+                    continue;
+
+                unitNodes[i].addItem(new UnitItemRelationship(itemMatrix[i][j][0], items[j]));
+            }
         }
 
         System.out.println(validTeams.size());
         System.out.println(unitNodes.length);
+        System.out.println(items.length);
 
         teamRepository.deleteAll();
 
         System.out.println("Delete done");
 
-        teamRepository.saveGraph(validTeams, unitNodes);
+        teamRepository.saveGraph(validTeams, unitNodes, items);
 
         System.out.println("Save done");
 

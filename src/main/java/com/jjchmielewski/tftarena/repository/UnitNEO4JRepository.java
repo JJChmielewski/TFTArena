@@ -12,5 +12,6 @@ public interface UnitNEO4JRepository extends Neo4jRepository<UnitNode, String> {
     @Query("create (n:UnitNode{name: $name})")
     void saveUnit(@Param("name") String name);
 
-
+    @Query("match (u:UnitNode), (i:Item) where u.name = $unitName and i.itemId = $itemId create (u)-[r:UnitItemRelationship{ timesPlayed: $timesPlayed}]->(i)")
+    void saveUnitItemRelationship(@Param("unitName") String unitName, @Param("itemId") int itemId, @Param("timesPlayed") int timesPlayed);
 }
