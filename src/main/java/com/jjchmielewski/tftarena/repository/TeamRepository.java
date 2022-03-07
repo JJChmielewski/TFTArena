@@ -8,7 +8,6 @@ import com.jjchmielewski.tftarena.entitis.nodes.relationships.TeamUnitRelationsh
 import com.jjchmielewski.tftarena.entitis.nodes.relationships.UnitItemRelationship;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -72,11 +71,12 @@ public class TeamRepository {
 
     public List<Team> getMatchInfo(String[] teams){
 
+        /*
         for(int i=0;i<teams.length;i++){
             String[] temp = teams[i].split("_");
             if(temp.length == 4)
                 teams[i] = this.traitPrefix+temp[0]+"_"+temp[1]+this.unitPrefix+temp[2]+"_"+temp[3];
-        }
+        }*/
 
         return teamNEO4JRepository.findStrength(teams);
     }

@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import java.math.BigInteger;
 import java.util.*;
 
 @Component
@@ -33,13 +34,16 @@ public class GraphBuilder implements Runnable{
 
     private final boolean collectData;
 
+    private final long setBeginning;
+
 
     @Autowired
     public GraphBuilder(TeamRepository teamRepository, GameRepository gameRepository,
                         @Value("${tftarena.riot-games.api-key}") String apiKey,
                         @Value("${tftarena.buildGraph}") boolean buildGraph,
                         @Value("${tftarena.saveGames}") boolean saveGames,
-                        @Value("${tftarena.collectData}") boolean collectData) {
+                        @Value("${tftarena.collectData}") boolean collectData,
+                        @Value("${tftarena.setBeginning}") long setBeginning) {
 
         this.teamRepository = teamRepository;
         this.gameRepository = gameRepository;
@@ -47,6 +51,7 @@ public class GraphBuilder implements Runnable{
         this.buildGraph = buildGraph;
         this.saveGames = saveGames;
         this.collectData = collectData;
+        this.setBeginning=setBeginning;
     }
 
 
@@ -98,9 +103,9 @@ public class GraphBuilder implements Runnable{
         String urlMatchDetailsAsia = "https://asia.api.riotgames.com/tft/match/v1/matches/";
 
 
-        DataCollector dataCollectorEU = new DataCollector(this.gameRepository,apiKey,urlDiamondEU,urlSummonersEU,urlSummonerMatchesEU,urlMatchDetailsEU,saveGames);
-        DataCollector dataCollectorUS = new DataCollector(this.gameRepository,apiKey,urlDiamondUS,urlSummonersUS,urlSummonerMatchesUS,urlMatchDetailsUS,saveGames);
-        DataCollector dataCollectorAsia = new DataCollector(this.gameRepository,apiKey,urlDiamondAsia,urlSummonersAsia,urlSummonerMatchesAsia,urlMatchDetailsAsia,saveGames);
+        DataCollector dataCollectorEU = new DataCollector(this.gameRepository,apiKey,urlDiamondEU,urlSummonersEU,urlSummonerMatchesEU,urlMatchDetailsEU,saveGames, setBeginning);
+        DataCollector dataCollectorUS = new DataCollector(this.gameRepository,apiKey,urlDiamondUS,urlSummonersUS,urlSummonerMatchesUS,urlMatchDetailsUS,saveGames, setBeginning);
+        DataCollector dataCollectorAsia = new DataCollector(this.gameRepository,apiKey,urlDiamondAsia,urlSummonersAsia,urlSummonerMatchesAsia,urlMatchDetailsAsia,saveGames, setBeginning);
 
         if(saveGames)
             gameRepository.deleteAll();
@@ -354,7 +359,7 @@ public class GraphBuilder implements Runnable{
 
     public void getData(){
 
-        List<Team> teams = teamRepository.getMatchInfo( new String[]{"Bodyguard_1_Kaisa_2", "Innovator_4_Ezreal_3", "Assassin_2_Akali_2", "Syndicate_3_Akali_1", "Chemtech_3_Viktor_1", "Bruiser_2_KogMaw_2", "Sniper_3_Jhin_1", "Yordle_1_Orianna_1"});
+        List<Team> teams = teamRepository.getMatchInfo(new String[]{"Bodyguard_1_Kaisa_2", "Innovator_4_Ezreal_3", "Assassin_2_Akali_2", "Syndicate_3_Akali_1", "Chemtech_3_Viktor_1", "Bruiser_2_KogMaw_2", "Sniper_3_Jhin_1", "Yordle_1_Heimerdinger_2"});
 
         //System.out.println(teams);
 
