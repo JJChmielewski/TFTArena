@@ -1,4 +1,4 @@
-package com.jjchmielewski.tftarena.initializer;
+package com.jjchmielewski.tftarena.graphBuilder;
 
 import com.jjchmielewski.tftarena.entitis.documents.Summoner;
 import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
@@ -19,8 +19,8 @@ public class DataCollector extends Thread{
 
     private final String apiKey;
 
-    private final int playerPages = 10;
-    private final int matcherPerPlayer = 10;
+    private int playerPages = 10;
+    private int matcherPerPlayer = 10;
 
     private final GameRepository gameRepository;
 
@@ -34,11 +34,11 @@ public class DataCollector extends Thread{
 
     private final boolean saveGames;
 
-    private final long setBeginnning;
+    private final long setBeginning;
 
     private List<Game> gatheredGames;
 
-    public DataCollector(GameRepository gameRepository,String apiKey, String urlDiamond, String urlSummoner, String urlSummonerMatches, String urlMatchDetails, boolean saveGames, long setBeginnning) {
+    public DataCollector(GameRepository gameRepository,String apiKey, String urlDiamond, String urlSummoner, String urlSummonerMatches, String urlMatchDetails, boolean saveGames, long setBeginning) {
         this.gameRepository = gameRepository;
         this.urlDiamond = urlDiamond;
         this.urlSummoner = urlSummoner;
@@ -47,7 +47,22 @@ public class DataCollector extends Thread{
         this.apiKey=apiKey;
         this.saveGames = saveGames;
         this.gatheredGames = new ArrayList<>();
-        this.setBeginnning = setBeginnning;
+        this.setBeginning = setBeginning;
+    }
+
+
+    public DataCollector(GameRepository gameRepository,String apiKey, String urlDiamond, String urlSummoner, String urlSummonerMatches, String urlMatchDetails, boolean saveGames, long setBeginning, int playerPages, int matcherPerPlayer) {
+        this.gameRepository = gameRepository;
+        this.urlDiamond = urlDiamond;
+        this.urlSummoner = urlSummoner;
+        this.urlSummonerMatches = urlSummonerMatches;
+        this.urlMatchDetails = urlMatchDetails;
+        this.apiKey=apiKey;
+        this.saveGames = saveGames;
+        this.gatheredGames = new ArrayList<>();
+        this.setBeginning = setBeginning;
+        this.playerPages = playerPages;
+        this.matcherPerPlayer = matcherPerPlayer;
     }
 
     public void collectData() throws InterruptedException {
@@ -60,6 +75,7 @@ public class DataCollector extends Thread{
         List<Summoner> diamondSummoners = new ArrayList<>();
 
         for(int i = 1; i<= playerPages; i++){
+
             try{
                 ResponseEntity<Summoner[]> responseDiamond = restTemplate.exchange(urlDiamond +i,HttpMethod.GET,request,Summoner[].class);
 
@@ -121,7 +137,7 @@ public class DataCollector extends Thread{
                 Game temp = restTemplate.exchange(urlMatchDetails +match, HttpMethod.GET,request,Game.class).getBody();
 
                 if(temp!=null){
-                    if(this.setBeginnning < temp.getInfo().getGame_datetime()){
+                    if(this.setBeginning < temp.getInfo().getGame_datetime()){
                         if(saveGames)
                             gameRepository.save(temp);
 

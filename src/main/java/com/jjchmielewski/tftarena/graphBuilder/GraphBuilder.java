@@ -1,4 +1,4 @@
-package com.jjchmielewski.tftarena.initializer;
+package com.jjchmielewski.tftarena.graphBuilder;
 
 import com.jjchmielewski.tftarena.entitis.documents.TeamComp;
 import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
@@ -11,12 +11,12 @@ import com.jjchmielewski.tftarena.entitis.nodes.relationships.TeamUnitRelationsh
 import com.jjchmielewski.tftarena.entitis.nodes.relationships.UnitItemRelationship;
 import com.jjchmielewski.tftarena.repository.GameRepository;
 import com.jjchmielewski.tftarena.repository.TeamRepository;
+import com.jjchmielewski.tftarena.services.MainService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
-import java.math.BigInteger;
 import java.util.*;
 
 @Component
@@ -36,6 +36,8 @@ public class GraphBuilder implements Runnable{
 
     private final long setBeginning;
 
+    private final MainService mainService;
+
 
     @Autowired
     public GraphBuilder(TeamRepository teamRepository, GameRepository gameRepository,
@@ -43,7 +45,7 @@ public class GraphBuilder implements Runnable{
                         @Value("${tftarena.buildGraph}") boolean buildGraph,
                         @Value("${tftarena.saveGames}") boolean saveGames,
                         @Value("${tftarena.collectData}") boolean collectData,
-                        @Value("${tftarena.setBeginning}") long setBeginning) {
+                        @Value("${tftarena.setBeginning}") long setBeginning, MainService mainService) {
 
         this.teamRepository = teamRepository;
         this.gameRepository = gameRepository;
@@ -52,6 +54,7 @@ public class GraphBuilder implements Runnable{
         this.saveGames = saveGames;
         this.collectData = collectData;
         this.setBeginning=setBeginning;
+        this.mainService = mainService;
     }
 
 
@@ -83,7 +86,7 @@ public class GraphBuilder implements Runnable{
             }
         }
 
-        getData();
+        mainService.checkAlgorithm();
     }
 
     public List<Game> collectData() throws InterruptedException {
@@ -355,40 +358,6 @@ public class GraphBuilder implements Runnable{
 
         System.out.println("Save done");
 
-    }
-
-    public void getData(){
-
-        List<Team> teams = teamRepository.getMatchInfo(new String[]{"Bodyguard_1_Kaisa_2", "Innovator_4_Ezreal_3", "Assassin_2_Akali_2", "Syndicate_3_Akali_1", "Chemtech_3_Viktor_1", "Bruiser_2_KogMaw_2", "Sniper_3_Jhin_1", "Yordle_1_Heimerdinger_2"});
-
-        //System.out.println(teams);
-
-        HashMap<String, Double> strength = new HashMap<>();
-
-        for(Team t : teams){
-            double tempStrength=0.0;
-            for(TeamRelationship r : t.getEnemyTeams())
-                tempStrength+=r.getStrength();
-            strength.put(t.getName(),tempStrength);
-        }
-
-        List<Map.Entry<String, Double>> sorted = new ArrayList<>(strength.entrySet());
-
-        sorted.sort(new Comparator<>() {
-            @Override
-            public int compare(Map.Entry<String, Double> o1, Map.Entry<String, Double> o2) {
-                if (o1.getValue() > o2.getValue())
-                    return -1;
-                else
-                    if(o1.getValue().equals(o2.getValue())) {
-                        return 0;
-                    }
-                    else
-                        return 1;
-            }
-        });
-
-        System.out.println(sorted);
     }
 
 
