@@ -13,10 +13,13 @@ import java.util.List;
 public interface TeamNEO4JRepository extends Neo4jRepository<Team, String> {
 
     @Query("create (n:Team{name: $name})")
-    void saveNodes(@Param("name") String name);
+    void saveNode(@Param("name") String name);
 
     @Query("Match (t1:Team), (t2:Team) where t1.name = $name1 and t2.name=$name2 create (t1)-[r:TeamRelationship{ strength: $strength}]->(t2) ")
-    void saveRelationships(@Param("name1") String name1, @Param("name2") String name2, @Param("strength") double strength);
+    void saveTeamRelationships(@Param("name1") String name1, @Param("name2") String name2, @Param("strength") double strength);
+
+    @Query("Match (t:Team), (u:UnitNode) where t.name = $teamName and u.name=$unitName create (t)-[r:TeamUnitRelationship{weight : $weight, percentagePlayed: $percentagePlayed}]->(u) ")
+    void saveTeamUnitRelationship(@Param("teamName") String teamName, @Param("unitName") String unitName, @Param("weight") double weight, @Param("percentagePlayed") double percentagePlayed);
 
     @Query("MATCH p=(t:Team)-[r:TeamRelationship]->(t2:Team) where (t.name in $teams) and (t2.name in $teams)  return collect(p)")
     List<Team> findStrength( @Param("teams") String[] teams);
