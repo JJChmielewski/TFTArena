@@ -285,6 +285,7 @@ public class GraphBuilder implements Runnable{
             outputStream.flush();
             outputStream.close();
 
+            /*
             ObjectInputStream inputStream = new ObjectInputStream(new FileInputStream("test.csv"));
 
             System.out.println("Read started");
@@ -305,11 +306,14 @@ public class GraphBuilder implements Runnable{
                 }
             }
 
-            MainService.matrix = testMatrix;
+            //MainService.matrix = testMatrix;
+
+             */
 
         }catch (Exception e){
             e.printStackTrace();
         }
+
 
         for(int i=0; i<strengthMatrix.length;i++){
             for(int j=0;j<strengthMatrix.length;j++){
@@ -318,8 +322,7 @@ public class GraphBuilder implements Runnable{
         }
 
 
-
-        //MainService.matrix = strengthMatrix;
+        MainService.matrix = strengthMatrix;
         MainService.teamNames = teamNames;
 
         System.out.println("Save done");
