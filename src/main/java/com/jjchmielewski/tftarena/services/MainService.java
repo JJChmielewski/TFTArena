@@ -63,7 +63,7 @@ public class MainService {
 
         List<Game> games = gameRepository.findAll();
 
-        int gamesNumber = games.size();
+        int gamesNumber = 10;
         double[] method1 = new double[gamesNumber+1];
         double[] method2 = new double[gamesNumber+1];
 
@@ -93,12 +93,12 @@ public class MainService {
 
                 for(int j=0;j<teams.length;j++){
                     if(guessedTeams[i].equals(teams[j])){
-                        method1[g] = Math.abs(teams.length - j -guessedTeams.length + i);
-                        method1[method1.length-1] += method1[g];
+                        method1[g] += Math.abs(teams.length - j -guessedTeams.length + i);
                     }
                 }
 
             }
+            method1[method1.length-1] += method1[g];
             method1[g] /= 32.0;
 
             //method 2
@@ -106,12 +106,13 @@ public class MainService {
 
                 for(int j=0;j<teams.length;j++){
                     if(guessedTeams[i].equals(teams[j])){
-                        method2[g] = Math.abs(j - i);
-                        method2[method2.length-1] += method2[g];
+                        method2[g] += Math.abs(j - i);
+
                     }
                 }
 
             }
+            method2[method2.length-1] += method2[g];
             method2[g] /= 32.0;
 
         }

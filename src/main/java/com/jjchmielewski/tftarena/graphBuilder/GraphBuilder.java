@@ -237,9 +237,10 @@ public class GraphBuilder implements Runnable{
 
 
         //remove irrelevant teams
+        /*
         for(int i=0;i< teamNames.size();i++){
 
-            double minPercent = 0.15;
+            double minPercent = 0;
 
             if(strengthMatrix[i][i][2] <= games.size()/100.0 * minPercent || teamNames.get(i).equals("No team")){
                 for(int j=0;j<strengthMatrix.length;j++){
@@ -251,7 +252,7 @@ public class GraphBuilder implements Runnable{
                 }
                 strengthMatrix[i] = null;
             }
-        }
+        }*/
 
 
         //display matrix
