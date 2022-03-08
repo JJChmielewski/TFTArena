@@ -14,30 +14,42 @@ import java.util.*;
 @Service
 public class MainService {
 
-    private final TeamRepository teamRepository;
 
     private final GameRepository gameRepository;
 
+    public static double[][][] matrix;
+    public static List<String> teamNames;
+
 
     @Autowired
-    public MainService(TeamRepository teamRepository, GameRepository gameRepository) {
-        this.teamRepository = teamRepository;
+    public MainService(GameRepository gameRepository) {
         this.gameRepository = gameRepository;
     }
 
     public List<Map.Entry<String, Double>> getData(String[] checkedTeams){
 
-        List<Team> teams = teamRepository.getMatchInfo(checkedTeams);
+       int indexes[] = new int[checkedTeams.length];
+
+       for(int i=0;i< checkedTeams.length;i++){
+
+           if(teamNames.contains(checkedTeams[i]))
+               indexes[i] = teamNames.indexOf(checkedTeams[i]);
+           else
+               indexes[i] = teamNames.indexOf("No team");
+       }
 
         //System.out.println(teams);
 
         HashMap<String, Double> strength = new HashMap<>();
 
-        for(Team t : teams){
+        for(int i=0;i<checkedTeams.length;i++){
             double tempStrength=0.0;
-            for(TeamRelationship r : t.getEnemyTeams())
-                tempStrength+=r.getStrength();
-            strength.put(t.getName(),tempStrength);
+
+            for(int j=0;j<checkedTeams.length;j++){
+                tempStrength+=matrix[indexes[i]][indexes[j]][0];
+            }
+
+            strength.put(checkedTeams[i],tempStrength);
         }
 
         List<Map.Entry<String, Double>> sorted = new ArrayList<>(strength.entrySet());
@@ -83,6 +95,10 @@ public class MainService {
 
 
             List<Map.Entry<String, Double>> data = getData(teams);
+
+            if(g==2 || g==9)
+                System.out.println(data);
+
             String[] guessedTeams = new String[data.size()];
             for(int i=0;i<data.size();i++){
                 guessedTeams[i] = data.get(i).getKey();
@@ -117,11 +133,18 @@ public class MainService {
 
         }
 
+
+
         method1[method1.length-1] /= 32 * (method1.length-1);
         method2[method2.length-1] /= 32 * (method2.length-1);
+
+        System.out.println(Arrays.toString(method1));
+        System.out.println(Arrays.toString(method2));
 
 
         System.out.println("M1 Avg error: "+method1[method1.length-1]);
         System.out.println("M2 Avg error: "+method2[method2.length-1]);
     }
+
+
 }

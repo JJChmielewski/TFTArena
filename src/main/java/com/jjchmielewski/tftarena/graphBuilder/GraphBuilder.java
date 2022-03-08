@@ -12,11 +12,17 @@ import com.jjchmielewski.tftarena.entitis.nodes.relationships.UnitItemRelationsh
 import com.jjchmielewski.tftarena.repository.GameRepository;
 import com.jjchmielewski.tftarena.repository.TeamRepository;
 import com.jjchmielewski.tftarena.services.MainService;
+import org.apache.tomcat.jni.Time;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.auditing.CurrentDateTimeProvider;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.*;
 
 @Component
@@ -270,94 +276,51 @@ public class GraphBuilder implements Runnable{
 
         System.out.println("Matrix finished");
 
-        Team[] teams = new Team[strengthMatrix.length];
-        UnitNode[] unitNodes = new UnitNode[unitNames.size()];
-        Item[] items = new Item[itemIndexes.size()];
 
-        //build nodes
-        for (int i=0;i<strengthMatrix.length;i++) {
+        try{
 
-            teams[i] = new Team(teamNames.get(i));
-        }
-        for(int j=0;j<unitNodes.length;j++){
+            ObjectOutputStream outputStream = new ObjectOutputStream(new FileOutputStream("test.csv"));
+            outputStream.writeObject(strengthMatrix);
 
-            unitNodes[j] = new UnitNode(unitNames.get(j));
+            outputStream.flush();
+            outputStream.close();
 
-        }
-        for(int k=0;k<items.length;k++){
-            items[k] = new Item(itemIndexes.get(k));
-        }
+            ObjectInputStream inputStream = new ObjectInputStream(new FileInputStream("test.csv"));
 
+            System.out.println("Read started");
+            long time = System.currentTimeMillis();
 
-        List<Team> validTeams = new ArrayList<>();
+            double[][][] testMatrix = (double[][][])inputStream.readObject();
 
-        //build relationships
-        for (int i = 0; i < teamNames.size(); i++) {
+            System.out.println("Read end: " + (System.currentTimeMillis() - time));
 
-            if(strengthMatrix[i] == null)
-                continue;
+            inputStream.close();
 
-            //team-team relationship
-            for (int j = 0; j < teams.length; j++) {
+            System.out.println(testMatrix.length);
+            System.out.println(testMatrix[0][0][0] == strengthMatrix[0][0][0]);
 
-                if(strengthMatrix[i][j] == null)
-                    continue;
-
-                TeamRelationship teamRelationship = new TeamRelationship(teams[j]);
-                double strength;
-
-                if (strengthMatrix[i][j][1] != 0)
-                    strength = strengthMatrix[i][j][0] / strengthMatrix[i][j][1];
-                else
-                    strength = 0;
-
-                teamRelationship.setStrength(strength);
-                teams[i].addEnemyTeams(teamRelationship);
-            }
-
-            //team-unit relationship
-            for(int j=0; j < unitNodes.length;j++){
-
-                if(unitMatrix[i][j][2] < 1)
-                    continue;
-
-                double weight, percentagePlayed;
-
-                if(unitMatrix[i][j][3]!=0){
-                    weight = (unitMatrix[i][j][1] / unitMatrix[i][j][3]) - (unitMatrix[i][j][0] / unitMatrix[i][j][2]);
+            for(int i=0; i<testMatrix.length;i++){
+                for(int j=0;j<testMatrix.length;j++){
+                    testMatrix[i][j][0] /=testMatrix[i][j][1];
                 }
-                else {
-                    weight = 8 - (unitMatrix[i][j][0] / unitMatrix[i][j][2]);
-                }
-
-                percentagePlayed = unitMatrix[i][j][2]/(unitMatrix[i][j][2]+unitMatrix[i][j][3]);
-
-                TeamUnitRelationship teamUnitRelationship = new TeamUnitRelationship( weight, percentagePlayed, unitNodes[j]);
-
-                teams[i].addUnit(teamUnitRelationship);
             }
 
-            validTeams.add(teams[i]);
-        }
-        //unit-item relationship
-        for(int i=0; i< unitNodes.length;i++){
-            for(int j=0;j< items.length;j++){
-                if(itemMatrix[i][j][0] < 1)
-                    continue;
+            MainService.matrix = testMatrix;
 
-                unitNodes[i].addItem(new UnitItemRelationship(itemMatrix[i][j][0], items[j]));
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+        for(int i=0; i<strengthMatrix.length;i++){
+            for(int j=0;j<strengthMatrix.length;j++){
+                strengthMatrix[i][j][0] /=strengthMatrix[i][j][1];
             }
         }
 
-        System.out.println(validTeams.size());
-        System.out.println(unitNodes.length);
-        System.out.println(items.length);
 
-        teamRepository.deleteAll();
 
-        System.out.println("Delete done");
-
-        teamRepository.saveGraph(validTeams, unitNodes, items);
+        //MainService.matrix = strengthMatrix;
+        MainService.teamNames = teamNames;
 
         System.out.println("Save done");
 
