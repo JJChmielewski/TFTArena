@@ -15,7 +15,7 @@ import java.util.Comparator;
 @Document(collation = "TeamComp")
 @Getter
 @Setter
-public class TeamComp {
+public class Team {
 
     @Id
     private String id;
@@ -26,7 +26,7 @@ public class TeamComp {
     private Trait[] traits;
     private Unit[] units;
 
-    public TeamComp() {
+    public Team() {
     }
 
     public String getTeamName(){

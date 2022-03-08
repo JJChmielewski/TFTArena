@@ -1,6 +1,6 @@
 package com.jjchmielewski.tftarena.services;
 
-import com.jjchmielewski.tftarena.entitis.documents.TeamComp;
+import com.jjchmielewski.tftarena.entitis.documents.Team;
 import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
 import com.jjchmielewski.tftarena.repository.GameRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,7 +8,6 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
@@ -82,11 +81,11 @@ public class MainService {
 
         for(int g=0;g<gamesNumber;g++){
 
-            TeamComp[] teamComps = games.get(g).getInfo().getParticipants();
+            Team[] teamComps = games.get(g).getInfo().getParticipants();
             String[] teams = new String[teamComps.length];
 
-            for (TeamComp teamComp : teamComps) {
-                teams[teamComp.getPlacement() - 1] = teamComp.getTeamName();
+            for (Team team : teamComps) {
+                teams[team.getPlacement() - 1] = team.getTeamName();
             }
 
             if(teams[0] == null || teams[1] == null || teams[2] == null || teams[3] == null || teams[4] == null || teams[5] == null || teams[6] == null || teams[7] == null){

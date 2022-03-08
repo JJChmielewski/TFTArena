@@ -1,36 +1,24 @@
 package com.jjchmielewski.tftarena.graphBuilder;
 
-import com.jjchmielewski.tftarena.entitis.documents.TeamComp;
+import com.jjchmielewski.tftarena.entitis.documents.Team;
 import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
 import com.jjchmielewski.tftarena.entitis.documents.unit.Unit;
-import com.jjchmielewski.tftarena.entitis.nodes.Item;
-import com.jjchmielewski.tftarena.entitis.nodes.Team;
-import com.jjchmielewski.tftarena.entitis.nodes.UnitNode;
-import com.jjchmielewski.tftarena.entitis.nodes.relationships.TeamRelationship;
-import com.jjchmielewski.tftarena.entitis.nodes.relationships.TeamUnitRelationship;
-import com.jjchmielewski.tftarena.entitis.nodes.relationships.UnitItemRelationship;
 import com.jjchmielewski.tftarena.repository.GameRepository;
-import com.jjchmielewski.tftarena.repository.TeamRepository;
 import com.jjchmielewski.tftarena.services.MainService;
-import org.apache.tomcat.jni.Time;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.auditing.CurrentDateTimeProvider;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class GraphBuilder implements Runnable{
 
     private final String apiKey;
-
-    private final TeamRepository teamRepository;
 
     private final GameRepository gameRepository;
 
@@ -46,14 +34,13 @@ public class GraphBuilder implements Runnable{
 
 
     @Autowired
-    public GraphBuilder(TeamRepository teamRepository, GameRepository gameRepository,
+    public GraphBuilder( GameRepository gameRepository,
                         @Value("${tftarena.riot-games.api-key}") String apiKey,
                         @Value("${tftarena.buildGraph}") boolean buildGraph,
                         @Value("${tftarena.saveGames}") boolean saveGames,
                         @Value("${tftarena.collectData}") boolean collectData,
                         @Value("${tftarena.setBeginning}") long setBeginning, MainService mainService) {
 
-        this.teamRepository = teamRepository;
         this.gameRepository = gameRepository;
         this.apiKey=apiKey;
         this.buildGraph = buildGraph;
@@ -67,12 +54,9 @@ public class GraphBuilder implements Runnable{
     @PostConstruct
     public void init() {
 
-
         Thread graphBuilderThread = new Thread(this);
 
         graphBuilderThread.start();
-
-
     }
 
     @Override
@@ -153,19 +137,19 @@ public class GraphBuilder implements Runnable{
         //matrix building
         for(Game game : games) {
 
-            TeamComp[] teams = game.getInfo().getParticipants();
+            Team[] teams = game.getInfo().getParticipants();
 
             if(teams.length != 8){
                 System.out.println(game.getId());
                 continue;
             }
 
-            for (TeamComp teamComp : teams) {
-                if (!teamNames.contains(teamComp.getTeamName())) {
-                    teamNames.add(teamComp.getTeamName());
+            for (Team team : teams) {
+                if (!teamNames.contains(team.getTeamName())) {
+                    teamNames.add(team.getTeamName());
                 }
 
-                for(Unit unit: teamComp.getUnits()){
+                for(Unit unit: team.getUnits()){
                     if(!unitNames.contains(unit.getCharacter_id()+"_"+unit.getTier())){
                         unitNames.add(unit.getCharacter_id() + "_" + unit.getTier());
                     }
@@ -192,12 +176,12 @@ public class GraphBuilder implements Runnable{
 
         //fill the matrix
         for(Game game:games){
-            TeamComp[] teams = game.getInfo().getParticipants();
-            for (TeamComp team : teams) {
+            Team[] teams = game.getInfo().getParticipants();
+            for (Team team : teams) {
 
                 int teamIndex = teamNames.indexOf(team.getTeamName());
 
-                for (TeamComp enemyTeam : teams) {
+                for (Team enemyTeam : teams) {
                     int enemyTeamIndex = teamNames.indexOf(enemyTeam.getTeamName());
 
 
