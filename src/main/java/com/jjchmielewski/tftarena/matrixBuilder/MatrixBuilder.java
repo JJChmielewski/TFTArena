@@ -1,22 +1,20 @@
-package com.jjchmielewski.tftarena.graphBuilder;
+package com.jjchmielewski.tftarena.matrixBuilder;
 
 import com.jjchmielewski.tftarena.entitis.documents.Team;
 import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
 import com.jjchmielewski.tftarena.entitis.documents.unit.Unit;
 import com.jjchmielewski.tftarena.repository.GameRepository;
-import com.jjchmielewski.tftarena.services.MainService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
-import java.io.FileOutputStream;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Component
-public class GraphBuilder implements Runnable{
+public class MatrixBuilder implements Runnable{
 
     private final String apiKey;
 
@@ -34,12 +32,12 @@ public class GraphBuilder implements Runnable{
 
 
     @Autowired
-    public GraphBuilder( GameRepository gameRepository,
-                        @Value("${tftarena.riot-games.api-key}") String apiKey,
-                        @Value("${tftarena.buildGraph}") boolean buildGraph,
-                        @Value("${tftarena.saveGames}") boolean saveGames,
-                        @Value("${tftarena.collectData}") boolean collectData,
-                        @Value("${tftarena.setBeginning}") long setBeginning, MainService mainService) {
+    public MatrixBuilder(GameRepository gameRepository,
+                         @Value("${tftarena.riot-games.api-key}") String apiKey,
+                         @Value("${tftarena.buildGraph}") boolean buildGraph,
+                         @Value("${tftarena.saveGames}") boolean saveGames,
+                         @Value("${tftarena.collectData}") boolean collectData,
+                         @Value("${tftarena.setBeginning}") long setBeginning, MainService mainService) {
 
         this.gameRepository = gameRepository;
         this.apiKey=apiKey;
@@ -71,14 +69,22 @@ public class GraphBuilder implements Runnable{
                 else
                     gatheredGames = gameRepository.findAll();
 
-                buildTest(gatheredGames);
+                buildMatrices(gatheredGames);
 
             }catch (Exception e){
                 e.printStackTrace();
             }
         }
 
-        mainService.checkAlgorithm();
+        String[] enemyTeams = {"Set6_Challenger_4_TFT6_Yone_2","Set6_Enchanter_2_TFT6_Jhin_2","Set6_Enchanter_2_TFT6_Orianna_2","Set6_Syndicate_4_TFT6_Akali_2","Set6_Innovator_4_TFT6_Heimerdinger_3", "Set6_Chemtech_2_Urgot_2", "Set6_Assassin_2_TFT6_Katarina_3", "Set6_Syndicate_3_TFT6_Akali_2"};
+
+        String[] teamUnits = {"TFT6_Yone_2"};
+
+        System.out.println(Arrays.toString(mainService.findBestTeams(enemyTeams,0.015, 2)));
+
+        System.out.println(Arrays.toString(mainService.getData(enemyTeams)));
+
+        System.out.println(Arrays.toString(mainService.findBestTeams(enemyTeams,teamUnits,0.015,5)));
     }
 
     public List<Game> collectData() throws InterruptedException {
@@ -123,7 +129,7 @@ public class GraphBuilder implements Runnable{
         return gatheredGames;
     }
 
-    public void buildTest(List<Game> games){
+    public void buildMatrices(List<Game> games){
 
         List<String> teamNames = new ArrayList<>();
         List<String> unitNames = new ArrayList<>();
@@ -226,90 +232,26 @@ public class GraphBuilder implements Runnable{
         }
 
 
-        //remove irrelevant teams
-        /*
-        for(int i=0;i< teamNames.size();i++){
-
-            double minPercent = 0;
-
-            if(strengthMatrix[i][i][2] <= games.size()/100.0 * minPercent || teamNames.get(i).equals("No team")){
-                for(int j=0;j<strengthMatrix.length;j++){
-
-                    if (strengthMatrix[j] != null) {
-                        strengthMatrix[j][i] = null;
-                    }
-
-                }
-                strengthMatrix[i] = null;
-            }
-        }*/
-
-
-        //display matrix
-        /*
-        for (int i = 0; i < strengthMatrix.length; i++) {
-            for (int j = 0; j < strengthMatrix.length; j++) {
-                if (strengthMatrix[i] != null) {
-                    System.out.print(Arrays.toString(strengthMatrix[i][j]) + " ");
-                }
-            }
-            System.out.print("\n");
-        }
-
-         */
-
-        System.out.println("Matrix finished");
-
-
-        try{
-
-            ObjectOutputStream outputStream = new ObjectOutputStream(new FileOutputStream("test.csv"));
-            outputStream.writeObject(strengthMatrix);
-
-            outputStream.flush();
-            outputStream.close();
-
-            /*
-            ObjectInputStream inputStream = new ObjectInputStream(new FileInputStream("test.csv"));
-
-            System.out.println("Read started");
-            long time = System.currentTimeMillis();
-
-            double[][][] testMatrix = (double[][][])inputStream.readObject();
-
-            System.out.println("Read end: " + (System.currentTimeMillis() - time));
-
-            inputStream.close();
-
-            System.out.println(testMatrix.length);
-            System.out.println(testMatrix[0][0][0] == strengthMatrix[0][0][0]);
-
-            for(int i=0; i<testMatrix.length;i++){
-                for(int j=0;j<testMatrix.length;j++){
-                    testMatrix[i][j][0] /=testMatrix[i][j][1];
-                }
-            }
-
-            //MainService.matrix = testMatrix;
-
-             */
-
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-
-
         for(int i=0; i<strengthMatrix.length;i++){
             for(int j=0;j<strengthMatrix.length;j++){
-                strengthMatrix[i][j][0] /=strengthMatrix[i][j][1];
+
+                if(strengthMatrix[i][j][1] != 0)
+                    strengthMatrix[i][j][0] /=strengthMatrix[i][j][1];
+                else
+                    strengthMatrix[i][j][0] = 0;
             }
         }
 
 
         MainService.matrix = strengthMatrix;
         MainService.teamNames = teamNames;
+        MainService.unitMatrix = unitMatrix;
+        MainService.unitNames = unitNames;
+        MainService.itemMatrix = itemMatrix;
+        MainService.itemIndexes = itemIndexes;
+        MainService.totalGames = games.size();
 
-        System.out.println("Save done");
+        System.out.println("Matrices built");
 
     }
 

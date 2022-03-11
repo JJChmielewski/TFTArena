@@ -1,4 +1,4 @@
-package com.jjchmielewski.tftarena.graphBuilder;
+package com.jjchmielewski.tftarena.matrixBuilder;
 
 import com.jjchmielewski.tftarena.entitis.documents.Summoner;
 import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
