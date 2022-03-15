@@ -46,6 +46,7 @@ public class MatrixBuilder implements Runnable{
         this.collectData = collectData;
         this.setBeginning=setBeginning;
         this.mainService = mainService;
+        System.out.println("tutaj: "+ System.getenv("RIOT_KEY"));
     }
 
 
