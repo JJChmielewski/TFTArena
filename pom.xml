@@ -14,7 +14,7 @@
     <name>TFTArena</name>
     <description>TFTArena</description>
     <properties>
-        <java.version>16</java.version>
+        <java.version>17</java.version>
     </properties>
     <dependencies>
         <dependency>
@@ -65,7 +65,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
                     <source>16</source>
-                    <target>16</target>
+                    <target>17</target>
                 </configuration>
             </plugin>
         </plugins>
