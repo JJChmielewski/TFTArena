@@ -41,7 +41,7 @@ public class MainService {
         this.gameRepository = gameRepository;
     }
 
-    public Pair<String, Double>[] getData(String[] teams){
+    public Pair<String, Double>[] predictMatch(String[] teams){
 
         int[] indexes = getTeamsIndexes(teams);
 
@@ -214,7 +214,7 @@ public class MainService {
                 continue;
             }
 
-            Pair<String, Double>[] data = getData(teams);
+            Pair<String, Double>[] data = predictMatch(teams);
 
             String[] guessedTeams = new String[data.length];
             for(int i=0;i<data.length;i++){

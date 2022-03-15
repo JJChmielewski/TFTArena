@@ -76,15 +76,6 @@ public class MatrixBuilder implements Runnable{
             }
         }
 
-        String[] enemyTeams = {"Set6_Challenger_4_TFT6_Yone_2","Set6_Enchanter_2_TFT6_Jhin_2","Set6_Enchanter_2_TFT6_Orianna_2","Set6_Syndicate_4_TFT6_Akali_2","Set6_Innovator_4_TFT6_Heimerdinger_3", "Set6_Chemtech_2_Urgot_2", "Set6_Assassin_2_TFT6_Katarina_3", "Set6_Syndicate_3_TFT6_Akali_2"};
-
-        String[] teamUnits = {"TFT6_Yone_2"};
-
-        System.out.println(Arrays.toString(mainService.findBestTeams(enemyTeams,0.015, 2)));
-
-        System.out.println(Arrays.toString(mainService.getData(enemyTeams)));
-
-        System.out.println(Arrays.toString(mainService.findBestTeams(enemyTeams,teamUnits,0.015,5)));
     }
 
     public List<Game> collectData() throws InterruptedException {
