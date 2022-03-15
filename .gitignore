@@ -34,4 +34,3 @@ build/
 
 test.csv
 test.txt
-/src/main/resources/application.properties

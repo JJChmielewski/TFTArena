@@ -33,14 +33,13 @@ public class MatrixBuilder implements Runnable{
 
     @Autowired
     public MatrixBuilder(GameRepository gameRepository,
-                         @Value("${tftarena.riot-games.api-key}") String apiKey,
                          @Value("${tftarena.buildGraph}") boolean buildGraph,
                          @Value("${tftarena.saveGames}") boolean saveGames,
                          @Value("${tftarena.collectData}") boolean collectData,
                          @Value("${tftarena.setBeginning}") long setBeginning, MainService mainService) {
 
         this.gameRepository = gameRepository;
-        this.apiKey=apiKey;
+        this.apiKey=System.getenv("RIOT_KEY");
         this.buildGraph = buildGraph;
         this.saveGames = saveGames;
         this.collectData = collectData;
