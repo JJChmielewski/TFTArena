@@ -2,6 +2,8 @@ package com.jjchmielewski.tftarena.matrixBuilder;
 
 import com.jjchmielewski.tftarena.entitis.documents.Team;
 import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
+import com.jjchmielewski.tftarena.entitis.documents.unit.Trait;
+import com.jjchmielewski.tftarena.entitis.documents.unit.Unit;
 import com.jjchmielewski.tftarena.repository.GameRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.util.Pair;
@@ -34,6 +36,10 @@ public class MainService {
     protected static List<Integer> itemIndexes;
 
     protected static int totalGames;
+
+    private Trait[] traits;
+
+    private Unit[] units;
 
 
     @Autowired
@@ -317,4 +323,11 @@ public class MainService {
         return indexes;
     }
 
+    public void setTraits(Trait[] traits) {
+        this.traits = traits;
+    }
+
+    public void setUnits(Unit[] units) {
+        this.units = units;
+    }
 }

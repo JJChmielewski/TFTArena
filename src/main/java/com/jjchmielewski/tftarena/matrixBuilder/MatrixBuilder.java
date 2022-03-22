@@ -1,5 +1,6 @@
 package com.jjchmielewski.tftarena.matrixBuilder;
 
+import com.jjchmielewski.tftarena.communitydragon.CommunityDragonHandler;
 import com.jjchmielewski.tftarena.entitis.documents.Team;
 import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
 import com.jjchmielewski.tftarena.entitis.documents.unit.Unit;
@@ -10,7 +11,6 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 @Component
@@ -30,15 +30,18 @@ public class MatrixBuilder implements Runnable{
 
     private final MainService mainService;
 
+    private final CommunityDragonHandler communityDragonHandler;
+
 
     @Autowired
     public MatrixBuilder(GameRepository gameRepository,
                          @Value("${tftarena.buildGraph}") boolean buildGraph,
                          @Value("${tftarena.saveGames}") boolean saveGames,
                          @Value("${tftarena.collectData}") boolean collectData,
-                         @Value("${tftarena.setBeginning}") long setBeginning, MainService mainService) {
+                         @Value("${tftarena.setBeginning}") long setBeginning, MainService mainService, CommunityDragonHandler communityDragonHandler) {
 
         this.gameRepository = gameRepository;
+        this.communityDragonHandler = communityDragonHandler;
         this.apiKey=System.getenv("RIOT_KEY");
         this.buildGraph = buildGraph;
         this.saveGames = saveGames;
@@ -55,6 +58,8 @@ public class MatrixBuilder implements Runnable{
         Thread graphBuilderThread = new Thread(this);
 
         graphBuilderThread.start();
+
+        communityDragonHandler.readCommunityDragon();
     }
 
     @Override
