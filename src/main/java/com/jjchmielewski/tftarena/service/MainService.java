@@ -1,14 +1,17 @@
-package com.jjchmielewski.tftarena.matrixBuilder;
+package com.jjchmielewski.tftarena.service;
 
 import com.jjchmielewski.tftarena.entitis.documents.Team;
 import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
 import com.jjchmielewski.tftarena.entitis.documents.unit.Trait;
 import com.jjchmielewski.tftarena.entitis.documents.unit.Unit;
+import com.jjchmielewski.tftarena.entitis.documents.unit.stats.Effect;
 import com.jjchmielewski.tftarena.repository.GameRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -198,6 +201,115 @@ public class MainService {
 
     }
 
+    public List<Pair<String, Double>> buildTeam(String teamName,int level, double minPercentagePlayed){
+
+        //1 trait, 2 style, 4 unit, 5 star
+        String[] teamNameSplit = teamName.split("_");
+        int teamIndex = teamNames.indexOf(teamName);
+        Effect teamEffect = getTeamEffect(teamNameSplit[0]+"_"+teamNameSplit[1], Integer.parseInt(teamNameSplit[2]));
+
+        List<Pair<String, Double>> team = new ArrayList<>();
+
+        List<Pair<String, Double>> validUnits = new ArrayList<>();
+        List<Pair<String, Double>> unitsWithTrait = new ArrayList<>();
+        Pair<String, Double> mainUnit = null;
+
+        for(int u=0;u<unitMatrix[teamIndex].length;u++){
+
+            if(unitMatrix[teamIndex][u][2]/(unitMatrix[teamIndex][u][2] + unitMatrix[teamIndex][u][3]) >= minPercentagePlayed){
+
+                double[] unitData = unitMatrix[teamIndex][u];
+
+                double value;
+
+                if(unitData[2] == 0)
+                    continue;
+
+                if(unitData[3] == 0)
+                    value=8 - unitData[0]/unitData[2];
+                else
+                    value=(unitData[1]/unitData[3]) - (unitData[0]/unitData[2]);
+
+                Pair<String, Double> unit = Pair.of(unitNames.get(u), value);
+
+                if(unit.getFirst().equals(teamNameSplit[3]+"_"+teamNameSplit[4]+"_"+teamNameSplit[5]))
+                    mainUnit = unit;
+
+                String[] unitNameSplit = unit.getFirst().split("_");
+
+                for(int i=0; i<units.length;i++){
+
+                    if(units[i].getApiName().equals(unitNameSplit[0]+"_"+unitNameSplit[1])){
+
+                        for(int t=0;t<units[i].getTraits().length;t++){
+                            if(teamNameSplit[1].equals(units[i].getTraits()[t])){
+                                unitsWithTrait.add(unit);
+                            }
+                        }
+
+                    }
+
+                }
+                validUnits.add(unit);
+            }
+        }
+
+        validUnits = Arrays.asList(sortPairsDesc(validUnits.toArray(new Pair[0])));
+        unitsWithTrait = Arrays.asList(sortPairsDesc(unitsWithTrait.toArray(new Pair[0])));
+        int traitUnitsInTeam = 0;
+        List<String> teamUnitNames = new ArrayList<>();
+
+        for(int l=0;team.size()<level;l++){
+
+            if(l-team.size() >= validUnits.size())
+                break;
+
+            String[] unitSplit;
+
+            if(team.size() < teamEffect.getMinUnits() && l<unitsWithTrait.size())
+                unitSplit = unitsWithTrait.get(l).getFirst().split("_");
+            else
+                unitSplit = validUnits.get(l-team.size()).getFirst().split("_");
+
+            if(!teamUnitNames.contains(unitSplit[1])){
+
+                if(team.size() < teamEffect.getMinUnits() && l<unitsWithTrait.size()){
+                    teamUnitNames.add(unitSplit[1]);
+                    team.add(unitsWithTrait.get(l));
+                    traitUnitsInTeam++;
+                    continue;
+                }
+
+                if(!team.contains(mainUnit)){
+                    teamUnitNames.add(mainUnit.getFirst().split("_")[1]);
+                    team.add(mainUnit);
+                    continue;
+                }
+
+                if(!team.contains(validUnits.get(l-team.size()))){
+
+                    if(unitsWithTrait.contains(validUnits.get(l-team.size()))){
+
+                        if(traitUnitsInTeam < teamEffect.getMaxUnits()){
+
+                            traitUnitsInTeam++;
+                            team.add(validUnits.get(l-team.size()));
+                        }
+
+                    }
+                    else
+                        team.add(validUnits.get(l-team.size()));
+
+                }
+
+                teamUnitNames.add(unitSplit[1]);
+            }
+
+        }
+
+        return team;
+    }
+
     public void checkAlgorithm(){
 
         List<Game> games = gameRepository.findAll();
@@ -323,11 +435,44 @@ public class MainService {
         return indexes;
     }
 
+    private Effect getTeamEffect(String traitName,int style){
+
+        for(int i=0; i<traits.length;i++){
+
+            if(traitName.equals(traits[i].getApiName())){
+
+                for(int j=0;j<traits[i].getEffects().length;j++){
+
+                    if(traits[i].getEffects()[j].getStyle() == style)
+                        return traits[i].getEffects()[j];
+                }
+            }
+        }
+
+        throw new RuntimeException("No such team");
+
+    }
+
     public void setTraits(Trait[] traits) {
         this.traits = traits;
     }
 
     public void setUnits(Unit[] units) {
         this.units = units;
+    }
+
+    public void setMatrixData(double[][][] matrix, List<String> teamNames,
+                              double[][][] unitMatrix, int[][][] itemMatrix,
+                              List<String> unitNames, List<Integer> itemIndexes,
+                              int totalGames){
+
+        this.matrix = matrix;
+        this.teamNames = teamNames;
+        this.unitMatrix = unitMatrix;
+        this.itemMatrix = itemMatrix;
+        this.unitNames = unitNames;
+        this.itemIndexes = itemIndexes;
+        this.totalGames= totalGames;
+
     }
 }

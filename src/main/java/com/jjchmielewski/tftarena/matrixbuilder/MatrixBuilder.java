@@ -1,10 +1,11 @@
-package com.jjchmielewski.tftarena.matrixBuilder;
+package com.jjchmielewski.tftarena.matrixbuilder;
 
-import com.jjchmielewski.tftarena.communitydragon.CommunityDragonHandler;
+import com.jjchmielewski.tftarena.matrixbuilder.communitydragon.CommunityDragonHandler;
 import com.jjchmielewski.tftarena.entitis.documents.Team;
 import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
 import com.jjchmielewski.tftarena.entitis.documents.unit.Unit;
 import com.jjchmielewski.tftarena.repository.GameRepository;
+import com.jjchmielewski.tftarena.service.MainService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -238,14 +239,7 @@ public class MatrixBuilder implements Runnable{
             }
         }
 
-
-        MainService.matrix = strengthMatrix;
-        MainService.teamNames = teamNames;
-        MainService.unitMatrix = unitMatrix;
-        MainService.unitNames = unitNames;
-        MainService.itemMatrix = itemMatrix;
-        MainService.itemIndexes = itemIndexes;
-        MainService.totalGames = games.size();
+        mainService.setMatrixData(strengthMatrix, teamNames,unitMatrix,itemMatrix,unitNames,itemIndexes,games.size());
 
         System.out.println("Matrices built");
 

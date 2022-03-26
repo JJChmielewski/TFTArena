@@ -1,10 +1,10 @@
-package com.jjchmielewski.tftarena.communitydragon;
+package com.jjchmielewski.tftarena.matrixbuilder.communitydragon;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jjchmielewski.tftarena.entitis.documents.unit.Trait;
 import com.jjchmielewski.tftarena.entitis.documents.unit.Unit;
-import com.jjchmielewski.tftarena.matrixBuilder.MainService;
+import com.jjchmielewski.tftarena.service.MainService;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
