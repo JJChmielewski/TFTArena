@@ -45,7 +45,7 @@ public class MainService {
 
         int[] indexes = getTeamsIndexes(teams);
 
-       Pair<String, Double>[] strength = new Pair[teams.length];
+        Pair<String, Double>[] strength = new Pair[teams.length];
 
         for(int i=0;i<teams.length;i++){
             double tempStrength=0.0;
@@ -62,6 +62,42 @@ public class MainService {
         strength = this.sortPairsDesc(strength);
 
         return strength;
+    }
+
+    public Pair<String, Double>[] predictMatch(Team[] teams){
+
+        String[] teamNames = new String[teams.length];
+
+        for(int t=0;t<teams.length;t++){
+            teamNames[t] = teams[t].getTeamName();
+        }
+
+        Pair<String, Double>[] guessedTeams = predictMatch(teamNames);
+
+        for(int i=0;i< guessedTeams.length;i++){
+
+            for(int j=0;j<guessedTeams.length;j++){
+
+                if(guessedTeams[i].equals(teams[j].getTeamName())){
+                    double unitWeight=0;
+                    int teamIndex = this.teamNames.indexOf(guessedTeams[i].getFirst());
+
+                    for(int u=0;u<teams[j].getUnits().length;u++){
+                        int unitIndex = this.unitNames.indexOf(teams[j].getUnits()[u]);
+
+                        unitWeight+= (unitMatrix[teamIndex][unitIndex][1]/unitMatrix[teamIndex][unitIndex][3]) -
+                                (unitMatrix[teamIndex][unitIndex][0]/unitMatrix[teamIndex][unitIndex][2]);
+                    }
+
+                    guessedTeams[i] = Pair.of(guessedTeams[i].getFirst(), guessedTeams[i].getSecond()*(unitWeight+7));
+                }
+
+            }
+
+        }
+
+        return this.sortPairsDesc(guessedTeams);
+
     }
 
     public Pair<String,Double>[] findBestTeams(String[] enemyTeams, double minPercentagePlayed){
@@ -192,7 +228,7 @@ public class MainService {
 
     }
 
-    public void checkAlgorithm(){
+    public double checkAlgorithm(){
 
         List<Game> games = gameRepository.findAll();
 
@@ -214,7 +250,8 @@ public class MainService {
                 continue;
             }
 
-            Pair<String, Double>[] data = predictMatch(teams);
+            //Pair<String, Double>[] data = predictMatch(teams);
+            Pair<String, Double>[] data = predictMatch(teamComps);
 
             String[] guessedTeams = new String[data.length];
             for(int i=0;i<data.length;i++){
@@ -257,6 +294,8 @@ public class MainService {
 
         System.out.println("M1 Avg error: "+method1[method1.length-1]);
         System.out.println("M2 Avg error: "+method2[method2.length-1]);
+
+        return method1[method1.length-1];
     }
 
     private Pair<String,Double>[] sortPairsDesc(Pair<String,Double>[] pairs){

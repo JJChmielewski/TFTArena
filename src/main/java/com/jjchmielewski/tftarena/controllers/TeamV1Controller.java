@@ -18,6 +18,11 @@ public class TeamV1Controller {
         this.mainService = mainService;
     }
 
+    @GetMapping("/check")
+    public double checkAlgorithm(){
+        return this.mainService.checkAlgorithm();
+    }
+
     @GetMapping("/predict")
     public Pair<String, Double>[] getMatchPrediction(@RequestBody String[] teams){
 
