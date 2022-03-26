@@ -1,16 +1,17 @@
-package com.jjchmielewski.tftarena.matrixBuilder;
+package com.jjchmielewski.tftarena.matrixbuilder;
 
+import com.jjchmielewski.tftarena.matrixbuilder.communitydragon.CommunityDragonHandler;
 import com.jjchmielewski.tftarena.entitis.documents.Team;
 import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
 import com.jjchmielewski.tftarena.entitis.documents.unit.Unit;
 import com.jjchmielewski.tftarena.repository.GameRepository;
+import com.jjchmielewski.tftarena.service.MainService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 @Component
@@ -30,15 +31,18 @@ public class MatrixBuilder implements Runnable{
 
     private final MainService mainService;
 
+    private final CommunityDragonHandler communityDragonHandler;
+
 
     @Autowired
     public MatrixBuilder(GameRepository gameRepository,
                          @Value("${tftarena.buildGraph}") boolean buildGraph,
                          @Value("${tftarena.saveGames}") boolean saveGames,
                          @Value("${tftarena.collectData}") boolean collectData,
-                         @Value("${tftarena.setBeginning}") long setBeginning, MainService mainService) {
+                         @Value("${tftarena.setBeginning}") long setBeginning, MainService mainService, CommunityDragonHandler communityDragonHandler) {
 
         this.gameRepository = gameRepository;
+        this.communityDragonHandler = communityDragonHandler;
         this.apiKey=System.getenv("RIOT_KEY");
         this.buildGraph = buildGraph;
         this.saveGames = saveGames;
@@ -55,6 +59,8 @@ public class MatrixBuilder implements Runnable{
         Thread graphBuilderThread = new Thread(this);
 
         graphBuilderThread.start();
+
+        communityDragonHandler.readCommunityDragon();
     }
 
     @Override
@@ -233,14 +239,7 @@ public class MatrixBuilder implements Runnable{
             }
         }
 
-
-        MainService.matrix = strengthMatrix;
-        MainService.teamNames = teamNames;
-        MainService.unitMatrix = unitMatrix;
-        MainService.unitNames = unitNames;
-        MainService.itemMatrix = itemMatrix;
-        MainService.itemIndexes = itemIndexes;
-        MainService.totalGames = games.size();
+        mainService.setMatrixData(strengthMatrix, teamNames,unitMatrix,itemMatrix,unitNames,itemIndexes,games.size());
 
         System.out.println("Matrices built");
 

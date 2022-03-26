@@ -22,6 +22,12 @@ public class Unit {
     private int tier;
     private int offensiveComponentCount;
 
+    //community dragon fields
+
+    private String apiName;
+
+    private String[] traits;
+
     public Unit() {
     }
 
@@ -48,6 +54,9 @@ public class Unit {
                 ", character_id='" + character_id + '\'' +
                 ", items=" + Arrays.toString(items) +
                 ", tier=" + tier +
+                ", offensiveComponentCount=" + offensiveComponentCount +
+                ", apiName='" + apiName + '\'' +
+                ", traits=" + Arrays.toString(traits) +
                 '}';
     }
 }
