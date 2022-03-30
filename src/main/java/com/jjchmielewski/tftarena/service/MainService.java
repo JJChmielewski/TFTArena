@@ -236,7 +236,6 @@ public class MainService {
 
     }
 
-
     public List<Pair<String, Double>> buildTeam(String teamName,int level, double minPercentagePlayed){
 
         //1 trait, 2 style, 4 unit, 5 star
