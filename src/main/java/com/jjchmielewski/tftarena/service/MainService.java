@@ -2,6 +2,7 @@ package com.jjchmielewski.tftarena.service;
 
 import com.jjchmielewski.tftarena.entitis.documents.Team;
 import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
+import com.jjchmielewski.tftarena.entitis.documents.unit.Item;
 import com.jjchmielewski.tftarena.entitis.documents.unit.Trait;
 import com.jjchmielewski.tftarena.entitis.documents.unit.Unit;
 import com.jjchmielewski.tftarena.entitis.documents.unit.stats.Effect;
@@ -27,7 +28,7 @@ public class MainService {
     //team, unit, 0 sum place when in, 1 sum place when not, 2 times played, 3 times not played
     protected double[][][] unitMatrix;
 
-    //unit, item, 0 times played, 1 times not played
+    //unit, item, 0 times played
     protected int[][][] itemMatrix;
 
     //indexes of matrices
@@ -42,6 +43,8 @@ public class MainService {
     private Trait[] traits;
 
     private Unit[] units;
+
+    private Item[] items;
 
 
     @Autowired
@@ -162,80 +165,6 @@ public class MainService {
         return returned;
     }
 
-    public Pair<String,Double>[] findBestTeams(String[] enemyTeams, String[] teamUnits, double minPercentagePlayed){
-
-        Pair<String, Double>[] teams = findBestTeams(enemyTeams, minPercentagePlayed);
-
-        Pair<String, Double>[] unitTeams = findBestTeamsWithUnits(teamUnits);
-
-        Pair<String, Double>[] result = new Pair[teamNames.size()];
-
-        double[] indexSums = new double[teamNames.size()];
-
-        for(int i=0;i< teamNames.size();i++){
-
-            indexSums[teamNames.indexOf(teams[i].getFirst())] += i;
-
-            indexSums[teamNames.indexOf(unitTeams[i].getFirst())] +=i;
-
-        }
-
-        for(int i=0;i< teamNames.size();i++){
-
-            result[i] = Pair.of(teamNames.get(i), indexSums[i]);
-        }
-
-        return this.sortPairsAsc(result);
-
-    }
-
-    public Pair<String,Double>[] findBestTeams(String[] enemyTeams, String[] teamUnits,double minPercentagePlayed, int limit){
-
-        if(limit < 0)
-            return null;
-
-        Pair<String, Double>[] teams = findBestTeams(enemyTeams,teamUnits, minPercentagePlayed);
-        Pair<String, Double>[] result = new Pair[limit];
-
-        for(int i=0; i<limit; i++){
-            result[i] = teams[i];
-        }
-
-        return result;
-
-    }
-
-    public Pair<String,Double>[] findBestTeamsWithUnits(String[] units){
-
-        Pair<String,Double>[] teams = new Pair[unitMatrix.length];
-
-        int[] unitIndexes = getUnitIndexes(units);
-
-        for(int t=0; t<unitMatrix.length;t++){
-
-            double value=0;
-
-            for(int unit : unitIndexes){
-
-                double[] unitData = unitMatrix[t][unit];
-
-                if(unit < 0)
-                    continue;
-
-                value+=(unitData[1]/unitData[3]) - (unitData[0]/unitData[2]);
-            }
-
-            Pair<String,Double> team = Pair.of(teamNames.get(t),value);
-
-            teams[t] = team;
-        }
-
-        teams = sortPairsDesc(teams);
-
-        return teams;
-
-    }
-
     public List<Pair<String, Double>> buildTeam(String teamName,int level, double minPercentagePlayed){
 
         //1 trait, 2 style, 4 unit, 5 star
@@ -343,6 +272,40 @@ public class MainService {
         }
 
         return team;
+    }
+
+    public List<Pair<String, Double>> findBestItemsForUnit(String unitName, int limit){
+
+        int unitIndex = this.unitNames.indexOf(unitName);
+
+        Pair<String, Double>[] items = new Pair[this.itemMatrix[unitIndex].length];
+
+        for(int i=0;i<this.itemMatrix[unitIndex].length;i++){
+
+            String itemName="";
+
+            for(Item item : this.items){
+                if(item.getId() == this.itemIndexes.get(i)) {
+                    itemName = item.getName();
+                    break;
+                }
+            }
+
+            items[i] = Pair.of(itemName, (double) this.itemMatrix[unitIndex][i][0]);
+
+        }
+
+        items = sortPairsDesc(items);
+
+        List<Pair<String,Double>> returnList = new ArrayList<>();
+
+        for(int i=0; i<limit;i++){
+
+            returnList.add(items[i]);
+        }
+
+        return returnList;
+
     }
 
     public double checkAlgorithm(){
@@ -497,6 +460,22 @@ public class MainService {
 
     public void setUnits(Unit[] units) {
         this.units = units;
+    }
+
+    public void setItems(Item[] items){
+
+        List<Item> tempItemsList = new ArrayList<>();
+
+        for(Item item : items){
+
+            if(item.getId() <= 99 && item.getId() > 0 && item.getId()/10 <= item.getId()%10)
+                tempItemsList.add(item);
+
+        }
+
+        System.out.println(tempItemsList);
+
+        this.items = tempItemsList.toArray(new Item[0]);
     }
 
     public void setMatrixData(double[][][] matrix, List<String> teamNames,
