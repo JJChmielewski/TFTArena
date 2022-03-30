@@ -2,6 +2,7 @@ package com.jjchmielewski.tftarena.matrixbuilder.communitydragon;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jjchmielewski.tftarena.entitis.documents.unit.Item;
 import com.jjchmielewski.tftarena.entitis.documents.unit.Trait;
 import com.jjchmielewski.tftarena.entitis.documents.unit.Unit;
 import com.jjchmielewski.tftarena.service.MainService;
@@ -58,8 +59,11 @@ public class CommunityDragonHandler {
 
             Unit[] units = objectMapper.readValue(currentSet.get("champions").toString(), Unit[].class);
 
+            Item[] items = objectMapper.readValue(jsonObject.get("items").toString(), Item[].class);
+
             mainService.setTraits(traits);
             mainService.setUnits(units);
+            mainService.setItems(items);
 
         }catch (Exception e){
             e.printStackTrace();

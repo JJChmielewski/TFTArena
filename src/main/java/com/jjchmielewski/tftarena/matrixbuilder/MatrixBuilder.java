@@ -172,7 +172,7 @@ public class MatrixBuilder implements Runnable{
         //sum place when in, sum place when not, times played, times not played
         unitMatrix = new double[teamNames.size()][unitNames.size()][4];
 
-        //times played, times not played
+        //times played
         itemMatrix = new int[unitNames.size()][itemIndexes.size()][1];
 
         System.out.println(unitNames.size());
