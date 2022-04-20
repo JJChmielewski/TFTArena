@@ -8,21 +8,17 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Arrays;
 
-@Document(collation = "Unit")
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Getter
 @Setter
-public class Unit {
+public class Unit implements Comparable<Unit>{
 
-    @Id
     private String id;
 
     private String character_id;
     private int[] items;
     private int tier;
     private int offensiveComponentCount;
-
-
 
     public Unit() {
     }
@@ -52,5 +48,13 @@ public class Unit {
                 ", tier=" + tier +
                 ", offensiveComponentCount=" + offensiveComponentCount +
                 '}';
+    }
+
+    @Override
+    public int compareTo(Unit o) {
+        if(this.offensiveComponentCount == o.offensiveComponentCount)
+            return Integer.compare(this.tier, o.getTier());
+
+        return Integer.compare(this.offensiveComponentCount, o.getOffensiveComponentCount());
     }
 }

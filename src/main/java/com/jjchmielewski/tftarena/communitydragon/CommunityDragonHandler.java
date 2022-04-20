@@ -2,9 +2,6 @@ package com.jjchmielewski.tftarena.communitydragon;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jjchmielewski.tftarena.riotapi.unit.Item;
-import com.jjchmielewski.tftarena.riotapi.unit.Trait;
-import com.jjchmielewski.tftarena.riotapi.unit.Unit;
 import com.jjchmielewski.tftarena.service.MainService;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,13 +38,14 @@ public class CommunityDragonHandler {
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
 
-            String jsonText = new String(), line;
+            StringBuilder jsonText = new StringBuilder();
+            String line;
 
             while((line = reader.readLine()) != null){
-                jsonText +=line;
+                jsonText.append(line);
             }
 
-            JSONObject jsonObject = new JSONObject(jsonText);
+            JSONObject jsonObject = new JSONObject(jsonText.toString());
 
             JSONObject sets = (JSONObject) jsonObject.get("sets");
 

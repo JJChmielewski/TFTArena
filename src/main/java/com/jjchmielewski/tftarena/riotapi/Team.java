@@ -9,7 +9,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Arrays;
-import java.util.Comparator;
+import java.util.Collections;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Document(collation = "TeamComp")
@@ -34,48 +34,13 @@ public class Team {
         if(units == null || traits ==null)
             return "No team";
 
-        Arrays.sort(this.traits, new Comparator<>() {
-            @Override
-            public int compare(Trait o1, Trait o2) {
-                if(o1.getNum_units() > o2.getNum_units())
-                    return -1;
-                else{
-                    if(o1.getNum_units() == o2.getNum_units()){
-                        if(o1.getStyle() > o2.getStyle()){
-                            return -1;
-                        }
-                        else
-                            return 0;
-                    }
-                    else
-                        return 1;
-                }
-            }
-        });
+        Arrays.sort(this.traits, Collections.reverseOrder());
 
         for(Unit u : this.units)
             u.countOffensiveComponents();
 
 
-
-        Arrays.sort(this.units, new Comparator<>() {
-            @Override
-            public int compare(Unit o1, Unit o2) {
-                if(o1.getOffensiveComponentCount() > o2.getOffensiveComponentCount())
-                    return -1;
-                else{
-                    if(o1.getOffensiveComponentCount() == o2.getOffensiveComponentCount()){
-                        if(o1.getTier() > o2.getTier()){
-                            return -1;
-                        }
-                        else
-                            return 0;
-                    }
-                    else
-                        return 1;
-                }
-            }
-        });
+        Arrays.sort(this.units, Collections.reverseOrder());
 
 
         String teamName ="";
@@ -88,7 +53,6 @@ public class Team {
 
         return teamName;
     }
-
 
     @Override
     public String toString() {

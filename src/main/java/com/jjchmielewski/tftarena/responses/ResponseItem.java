@@ -21,6 +21,6 @@ public class ResponseItem implements Comparable<ResponseItem>{
 
     @Override
     public int compareTo(ResponseItem o) {
-        return Integer.compare(this.timesPlayed, o.timesPlayed);
+        return Integer.compare(this.timesPlayed, o.getTimesPlayed());
     }
 }

@@ -7,7 +7,7 @@ import lombok.Setter;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Getter
 @Setter
-public class Trait {
+public class Trait implements Comparable<Trait>{
 
     private String id;
     private int num_units;
@@ -29,5 +29,13 @@ public class Trait {
                 ", tier_total=" + tier_total +
                 ", name='" + name + '\'' +
                 '}';
+    }
+
+    @Override
+    public int compareTo(Trait o) {
+        if(this.num_units == o.getNum_units())
+            return Integer.compare(this.style, o.getStyle());
+
+        return Integer.compare(this.num_units,o.getNum_units());
     }
 }

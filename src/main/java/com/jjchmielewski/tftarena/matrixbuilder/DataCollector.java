@@ -19,8 +19,8 @@ public class DataCollector extends Thread{
 
     private final String apiKey;
 
-    private int playerPages = 10;
-    private int matcherPerPlayer = 10;
+    private final int playerPages;
+    private final int matcherPerPlayer;
 
     private final GameRepository gameRepository;
 
@@ -36,7 +36,7 @@ public class DataCollector extends Thread{
 
     private final long setBeginning;
 
-    private List<Game> gatheredGames;
+    private final List<Game> gatheredGames;
 
     public DataCollector(GameRepository gameRepository,String apiKey, String urlDiamond, String urlSummoner, String urlSummonerMatches, String urlMatchDetails, boolean saveGames, long setBeginning) {
         this.gameRepository = gameRepository;
@@ -48,21 +48,10 @@ public class DataCollector extends Thread{
         this.saveGames = saveGames;
         this.gatheredGames = new ArrayList<>();
         this.setBeginning = setBeginning;
-    }
 
-
-    public DataCollector(GameRepository gameRepository,String apiKey, String urlDiamond, String urlSummoner, String urlSummonerMatches, String urlMatchDetails, boolean saveGames, long setBeginning, int playerPages, int matcherPerPlayer) {
-        this.gameRepository = gameRepository;
-        this.urlDiamond = urlDiamond;
-        this.urlSummoner = urlSummoner;
-        this.urlSummonerMatches = urlSummonerMatches;
-        this.urlMatchDetails = urlMatchDetails;
-        this.apiKey=apiKey;
-        this.saveGames = saveGames;
-        this.gatheredGames = new ArrayList<>();
-        this.setBeginning = setBeginning;
-        this.playerPages = playerPages;
-        this.matcherPerPlayer = matcherPerPlayer;
+        //default values
+        this.playerPages=10;
+        this.matcherPerPlayer=10;
     }
 
     public void collectData() throws InterruptedException {

@@ -27,6 +27,6 @@ public class ResponseTeam implements Comparable<ResponseTeam>{
 
     @Override
     public int compareTo(ResponseTeam o) {
-        return Double.compare(this.value, o.value);
+        return Double.compare(this.value, o.getValue());
     }
 }

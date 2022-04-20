@@ -22,6 +22,6 @@ public class ResponseUnit implements Comparable<ResponseUnit>{
 
     @Override
     public int compareTo(ResponseUnit o) {
-        return Double.compare(this.value, o.value);
+        return Double.compare(this.value, o.getValue());
     }
 }

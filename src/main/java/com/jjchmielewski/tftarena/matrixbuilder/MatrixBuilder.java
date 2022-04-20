@@ -195,7 +195,7 @@ public class MatrixBuilder implements Runnable{
                 //analysing units in team
                 List<String> teamUnits = new ArrayList<>();
 
-                //preping units, sorting out items
+                //preparing units, sorting out items
                 for(Unit unit : team.getUnits()) {
                     String teamName = unit.getCharacter_id() + "_" + unit.getTier();
                     teamUnits.add(teamName);
