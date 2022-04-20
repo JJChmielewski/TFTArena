@@ -1,4 +1,4 @@
-package com.jjchmielewski.tftarena.entitis.documents.unit;
+package com.jjchmielewski.tftarena.riotapi.unit;
 
 import lombok.Getter;
 import lombok.Setter;

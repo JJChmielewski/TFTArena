@@ -1,4 +1,4 @@
-package com.jjchmielewski.tftarena.entitis.documents;
+package com.jjchmielewski.tftarena.riotapi;
 
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

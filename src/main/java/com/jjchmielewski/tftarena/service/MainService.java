@@ -1,20 +1,20 @@
 package com.jjchmielewski.tftarena.service;
 
-import com.jjchmielewski.tftarena.entitis.documents.Team;
-import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
-import com.jjchmielewski.tftarena.entitis.documents.unit.Item;
-import com.jjchmielewski.tftarena.entitis.documents.unit.Trait;
-import com.jjchmielewski.tftarena.entitis.documents.unit.Unit;
-import com.jjchmielewski.tftarena.entitis.documents.unit.stats.Effect;
+import com.jjchmielewski.tftarena.communitydragon.CDItem;
+import com.jjchmielewski.tftarena.communitydragon.CDTrait;
+import com.jjchmielewski.tftarena.communitydragon.CDUnit;
+import com.jjchmielewski.tftarena.communitydragon.stats.CDEffect;
 import com.jjchmielewski.tftarena.repository.GameRepository;
+import com.jjchmielewski.tftarena.responses.ResponseItem;
+import com.jjchmielewski.tftarena.responses.ResponseTeam;
+import com.jjchmielewski.tftarena.responses.ResponseUnit;
+import com.jjchmielewski.tftarena.riotapi.Team;
+import com.jjchmielewski.tftarena.riotapi.entities.Game;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class MainService {
@@ -23,28 +23,31 @@ public class MainService {
     private final GameRepository gameRepository;
 
     //team, enemy, 0 strength, 1 times played vs enemy, 2 total times played
-    protected double[][][] matrix;
+    private double[][][] matrix;
 
     //team, unit, 0 sum place when in, 1 sum place when not, 2 times played, 3 times not played
-    protected double[][][] unitMatrix;
+    private double[][][] unitMatrix;
 
     //unit, item, 0 times played
-    protected int[][][] itemMatrix;
+    private int[][][] itemMatrix;
 
     //indexes of matrices
-    protected List<String> teamNames;
+    private List<String> teamNames;
 
-    protected List<String> unitNames;
+    private List<String> unitNames;
 
-    protected List<Integer> itemIndexes;
+    private List<Integer> itemIDs;
 
-    protected int totalGames;
+    private int totalGames;
 
-    private Trait[] traits;
+    //key name
+    private Map<String, CDTrait> traits;
 
-    private Unit[] units;
+    //key apiName
+    private Map<String, CDUnit> units;
 
-    private Item[] items;
+    //key id
+    private Map<Integer, CDItem> items;
 
 
     @Autowired
@@ -89,18 +92,25 @@ public class MainService {
 
             for(int j=0;j<guessedTeams.length;j++){
 
-                if(guessedTeams[i].equals(teams[j].getTeamName())){
+                if(guessedTeams[i].getFirst().equals(teams[j].getTeamName())){
                     double unitWeight=0;
                     int teamIndex = this.teamNames.indexOf(guessedTeams[i].getFirst());
 
                     for(int u=0;u<teams[j].getUnits().length;u++){
-                        int unitIndex = this.unitNames.indexOf(teams[j].getUnits()[u]);
+                        String unitName = teams[j].getUnits()[u].getCharacter_id()+"_"+teams[j].getUnits()[u].getTier();
+
+                        int unitIndex = this.unitNames.indexOf(unitName);
+
+                        if(unitIndex < 0){
+                            System.out.println(teams[j].getUnits()[u]);
+                            continue;
+                        }
 
                         unitWeight+= (unitMatrix[teamIndex][unitIndex][1]/unitMatrix[teamIndex][unitIndex][3]) -
                                 (unitMatrix[teamIndex][unitIndex][0]/unitMatrix[teamIndex][unitIndex][2]);
                     }
 
-                    guessedTeams[i] = Pair.of(guessedTeams[i].getFirst(), guessedTeams[i].getSecond()*(unitWeight+7));
+                    guessedTeams[i] = Pair.of(guessedTeams[i].getFirst(), guessedTeams[i].getSecond()+unitWeight);
                 }
 
             }
@@ -165,18 +175,19 @@ public class MainService {
         return returned;
     }
 
-    public List<Pair<String, Double>> buildTeam(String teamName,int level, double minPercentagePlayed){
+    public ResponseTeam buildTeam(String teamName, int level, double minPercentagePlayed){
 
         //1 trait, 2 style, 4 unit, 5 star
         String[] teamNameSplit = teamName.split("_");
+
         int teamIndex = teamNames.indexOf(teamName);
-        Effect teamEffect = getTeamEffect(teamNameSplit[0]+"_"+teamNameSplit[1], Integer.parseInt(teamNameSplit[2]));
+        CDEffect teamEffect = getTeamEffect(teamNameSplit[1], Integer.parseInt(teamNameSplit[2]));
 
-        List<Pair<String, Double>> team = new ArrayList<>();
+        List<ResponseUnit> teamUnits = new ArrayList<>();
 
-        List<Pair<String, Double>> validUnits = new ArrayList<>();
-        List<Pair<String, Double>> unitsWithTrait = new ArrayList<>();
-        Pair<String, Double> mainUnit = null;
+        List<ResponseUnit> validUnits = new ArrayList<>();
+        List<ResponseUnit> unitsWithTrait = new ArrayList<>();
+        ResponseUnit mainUnit = null;
 
         for(int u=0;u<unitMatrix[teamIndex].length;u++){
 
@@ -186,83 +197,82 @@ public class MainService {
 
                 double value;
 
+                String unitName = unitNames.get(u);
+
                 if(unitData[2] == 0)
                     continue;
 
                 if(unitData[3] == 0)
-                    value=8 - unitData[0]/unitData[2];
+                    value= 8 - unitData[0]/unitData[2];
                 else
-                    value=(unitData[1]/unitData[3]) - (unitData[0]/unitData[2]);
+                    value= (unitData[1]/unitData[3]) - (unitData[0]/unitData[2]);
 
-                Pair<String, Double> unit = Pair.of(unitNames.get(u), value);
+                ResponseUnit unit = new ResponseUnit(unitName, value);
 
-                if(unit.getFirst().equals(teamNameSplit[3]+"_"+teamNameSplit[4]+"_"+teamNameSplit[5]))
+                if(unitName.equals(teamNameSplit[3]+"_"+teamNameSplit[4]+"_"+teamNameSplit[5])) {
                     mainUnit = unit;
-
-                String[] unitNameSplit = unit.getFirst().split("_");
-
-                for(int i=0; i<units.length;i++){
-
-                    if(units[i].getApiName().equals(unitNameSplit[0]+"_"+unitNameSplit[1])){
-
-                        for(int t=0;t<units[i].getTraits().length;t++){
-                            if(teamNameSplit[1].equals(units[i].getTraits()[t])){
-                                unitsWithTrait.add(unit);
-                            }
-                        }
-
-                    }
-
+                    continue;
                 }
+
+                String[] unitNameSplit = unitName.split("_");
+
+                for(String traitName : this.units.get(unitNameSplit[0]+"_"+unitNameSplit[1]).traits()){
+                    if(teamNameSplit[1].equals(traitName)){
+                        unitsWithTrait.add(unit);
+                    }
+                }
+
                 validUnits.add(unit);
             }
         }
 
-        validUnits = Arrays.asList(sortPairsDesc(validUnits.toArray(new Pair[0])));
-        unitsWithTrait = Arrays.asList(sortPairsDesc(unitsWithTrait.toArray(new Pair[0])));
+        validUnits.sort(Collections.reverseOrder());
+        unitsWithTrait.sort(Collections.reverseOrder());
+
         int traitUnitsInTeam = 0;
+
         List<String> teamUnitNames = new ArrayList<>();
 
-        for(int l=0;team.size()<level;l++){
+        for(int l=0;teamUnits.size()<level;l++){
 
-            if(l-team.size() >= validUnits.size())
+            if(l-teamUnits.size() >= validUnits.size())
                 break;
 
             String[] unitSplit;
 
-            if(team.size() < teamEffect.getMinUnits() && l<unitsWithTrait.size())
-                unitSplit = unitsWithTrait.get(l).getFirst().split("_");
+            if(teamUnits.size() < teamEffect.minUnits() && l<unitsWithTrait.size())
+                unitSplit = unitsWithTrait.get(l).getApiName().split("_");
             else
-                unitSplit = validUnits.get(l-team.size()).getFirst().split("_");
+                unitSplit = validUnits.get(l-teamUnits.size()).getApiName().split("_");
 
             if(!teamUnitNames.contains(unitSplit[1])){
 
-                if(team.size() < teamEffect.getMinUnits() && l<unitsWithTrait.size()){
+                if(teamUnits.size() < teamEffect.minUnits() && l < unitsWithTrait.size()){
                     teamUnitNames.add(unitSplit[1]);
-                    team.add(unitsWithTrait.get(l));
+                    teamUnits.add(unitsWithTrait.get(l));
                     traitUnitsInTeam++;
                     continue;
                 }
 
-                if(!team.contains(mainUnit)){
-                    teamUnitNames.add(mainUnit.getFirst().split("_")[1]);
-                    team.add(mainUnit);
+                if(!teamUnits.contains(mainUnit) && mainUnit != null){
+                    teamUnitNames.add(mainUnit.getApiName().split("_")[1]);
+                    teamUnits.add(mainUnit);
                     continue;
                 }
 
-                if(!team.contains(validUnits.get(l-team.size()))){
+                if(!teamUnits.contains(validUnits.get(l-teamUnits.size()))){
 
-                    if(unitsWithTrait.contains(validUnits.get(l-team.size()))){
+                    if(unitsWithTrait.contains(validUnits.get(l-teamUnits.size()))){
 
-                        if(traitUnitsInTeam < teamEffect.getMaxUnits()){
+                        if(traitUnitsInTeam < teamEffect.maxUnits()){
 
                             traitUnitsInTeam++;
-                            team.add(validUnits.get(l-team.size()));
+                            teamUnits.add(validUnits.get(l-teamUnits.size()));
                         }
 
                     }
                     else
-                        team.add(validUnits.get(l-team.size()));
+                        teamUnits.add(validUnits.get(l-teamUnits.size()));
 
                 }
 
@@ -271,40 +281,29 @@ public class MainService {
 
         }
 
-        return team;
+        return new ResponseTeam(teamName , teamUnits);
     }
 
-    public List<Pair<String, Double>> findBestItemsForUnit(String unitName, int limit){
+    public List<ResponseItem> findBestItemsForUnit(String unitName, int limit){
 
         int unitIndex = this.unitNames.indexOf(unitName);
 
-        Pair<String, Double>[] items = new Pair[this.itemMatrix[unitIndex].length];
+        List<ResponseItem> items = new ArrayList<>();
 
         for(int i=0;i<this.itemMatrix[unitIndex].length;i++){
 
-            String itemName="";
+            CDItem temp = this.items.get(itemIDs.get(i));
 
-            for(Item item : this.items){
-                if(item.getId() == this.itemIndexes.get(i)) {
-                    itemName = item.getName();
-                    break;
-                }
-            }
+            if(temp == null)
+                continue;
 
-            items[i] = Pair.of(itemName, (double) this.itemMatrix[unitIndex][i][0]);
+            items.add(new ResponseItem(temp.name(), temp.id(),temp.from(),this.itemMatrix[unitIndex][i][0]));
 
         }
 
-        items = sortPairsDesc(items);
+        items.sort(Collections.reverseOrder());
 
-        List<Pair<String,Double>> returnList = new ArrayList<>();
-
-        for(int i=0; i<limit;i++){
-
-            returnList.add(items[i]);
-        }
-
-        return returnList;
+        return items.subList(0,limit);
 
     }
 
@@ -330,8 +329,8 @@ public class MainService {
                 continue;
             }
 
-            //Pair<String, Double>[] data = predictMatch(teams);
-            Pair<String, Double>[] data = predictMatch(teamComps);
+            Pair<String, Double>[] data = predictMatch(teams);
+            //Pair<String, Double>[] data = predictMatch(teamComps);
 
             String[] guessedTeams = new String[data.length];
             for(int i=0;i<data.length;i++){
@@ -393,21 +392,6 @@ public class MainService {
         return pairs;
     }
 
-    private Pair<String,Double>[] sortPairsAsc(Pair<String,Double>[] pairs){
-
-        if(pairs == null)
-            return null;
-
-        Arrays.sort(pairs, new Comparator<Pair<String, Double>>() {
-            @Override
-            public int compare(Pair<String, Double> o1, Pair<String, Double> o2) {
-                return o1.getSecond().compareTo(o2.getSecond());
-            }
-        });
-
-        return pairs;
-    }
-
     private int[] getTeamsIndexes(String[] teams){
         int[] indexes = new int[teams.length];
 
@@ -422,60 +406,46 @@ public class MainService {
         return indexes;
     }
 
-    private int[] getUnitIndexes(String[] units){
-        int[] indexes = new int[units.length];
+    private CDEffect getTeamEffect(String traitName, int style){
 
-        for(int i=0;i< units.length;i++){
+        for(CDEffect effect : this.traits.get(traitName).effects()){
 
-            if(unitNames.contains(units[i]))
-                indexes[i] = unitNames.indexOf(units[i]);
-            else
-                indexes[i] = -1;
+            if(effect.style() == style)
+                return effect;
         }
 
-        return indexes;
+        throw new RuntimeException("No such effect");
+
     }
 
-    private Effect getTeamEffect(String traitName,int style){
+    public void setTraits(CDTrait[] traits) {
 
-        for(int i=0; i<traits.length;i++){
+        this.traits = new HashMap<>();
 
-            if(traitName.equals(traits[i].getApiName())){
+        for(int i=0; i< traits.length;i++){
+            this.traits.put(traits[i].name(), traits[i]);
+        }
+    }
 
-                for(int j=0;j<traits[i].getEffects().length;j++){
+    public void setUnits(CDUnit[] units) {
+        this.units = new HashMap<>();
 
-                    if(traits[i].getEffects()[j].getStyle() == style)
-                        return traits[i].getEffects()[j];
-                }
-            }
+        for(int i=0; i<units.length;i++){
+            this.units.put(units[i].apiName(), units[i]);
         }
 
-        throw new RuntimeException("No such team");
-
     }
 
-    public void setTraits(Trait[] traits) {
-        this.traits = traits;
-    }
+    public void setItems(CDItem[] items){
 
-    public void setUnits(Unit[] units) {
-        this.units = units;
-    }
+        this.items = new HashMap<>();
 
-    public void setItems(Item[] items){
+        for(CDItem item : items){
 
-        List<Item> tempItemsList = new ArrayList<>();
-
-        for(Item item : items){
-
-            if(item.getId() <= 99 && item.getId() > 0 && item.getId()/10 <= item.getId()%10)
-                tempItemsList.add(item);
+            if(item.id() <= 99 && item.id() > 0 && item.id()/10 <= item.id()%10)
+                this.items.put(item.id(), item);
 
         }
-
-        System.out.println(tempItemsList);
-
-        this.items = tempItemsList.toArray(new Item[0]);
     }
 
     public void setMatrixData(double[][][] matrix, List<String> teamNames,
@@ -488,7 +458,7 @@ public class MainService {
         this.unitMatrix = unitMatrix;
         this.itemMatrix = itemMatrix;
         this.unitNames = unitNames;
-        this.itemIndexes = itemIndexes;
+        this.itemIDs = itemIndexes;
         this.totalGames= totalGames;
 
     }

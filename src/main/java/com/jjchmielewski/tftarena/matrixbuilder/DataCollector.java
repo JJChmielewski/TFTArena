@@ -1,7 +1,7 @@
 package com.jjchmielewski.tftarena.matrixbuilder;
 
-import com.jjchmielewski.tftarena.entitis.documents.Summoner;
-import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
+import com.jjchmielewski.tftarena.riotapi.Summoner;
+import com.jjchmielewski.tftarena.riotapi.entities.Game;
 import com.jjchmielewski.tftarena.repository.GameRepository;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;

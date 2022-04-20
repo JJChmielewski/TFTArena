@@ -1,10 +1,10 @@
-package com.jjchmielewski.tftarena.matrixbuilder.communitydragon;
+package com.jjchmielewski.tftarena.communitydragon;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jjchmielewski.tftarena.entitis.documents.unit.Item;
-import com.jjchmielewski.tftarena.entitis.documents.unit.Trait;
-import com.jjchmielewski.tftarena.entitis.documents.unit.Unit;
+import com.jjchmielewski.tftarena.riotapi.unit.Item;
+import com.jjchmielewski.tftarena.riotapi.unit.Trait;
+import com.jjchmielewski.tftarena.riotapi.unit.Unit;
 import com.jjchmielewski.tftarena.service.MainService;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,11 +55,11 @@ public class CommunityDragonHandler {
 
             ObjectMapper objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-            Trait[] traits = objectMapper.readValue(currentSet.get("traits").toString(), Trait[].class);
+            CDTrait[] traits = objectMapper.readValue(currentSet.get("traits").toString(), CDTrait[].class);
 
-            Unit[] units = objectMapper.readValue(currentSet.get("champions").toString(), Unit[].class);
+            CDUnit[] units = objectMapper.readValue(currentSet.get("champions").toString(), CDUnit[].class);
 
-            Item[] items = objectMapper.readValue(jsonObject.get("items").toString(), Item[].class);
+            CDItem[] items = objectMapper.readValue(jsonObject.get("items").toString(), CDItem[].class);
 
             mainService.setTraits(traits);
             mainService.setUnits(units);

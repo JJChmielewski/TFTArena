@@ -1,8 +1,8 @@
-package com.jjchmielewski.tftarena.entitis.documents;
+package com.jjchmielewski.tftarena.riotapi;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.jjchmielewski.tftarena.entitis.documents.unit.Trait;
-import com.jjchmielewski.tftarena.entitis.documents.unit.Unit;
+import com.jjchmielewski.tftarena.riotapi.unit.Trait;
+import com.jjchmielewski.tftarena.riotapi.unit.Unit;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
@@ -55,6 +55,8 @@ public class Team {
 
         for(Unit u : this.units)
             u.countOffensiveComponents();
+
+
 
         Arrays.sort(this.units, new Comparator<>() {
             @Override

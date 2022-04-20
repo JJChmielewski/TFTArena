@@ -1,7 +1,8 @@
 package com.jjchmielewski.tftarena.controllers;
 
 
-import com.jjchmielewski.tftarena.entitis.documents.unit.Item;
+import com.jjchmielewski.tftarena.responses.ResponseItem;
+import com.jjchmielewski.tftarena.responses.ResponseTeam;
 import com.jjchmielewski.tftarena.service.MainService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.util.Pair;
@@ -39,14 +40,14 @@ public class TeamV1Controller {
     }
 
     @GetMapping("/team/get-units")
-    public List<Pair<String,Double>> getTeamUnits(@RequestParam String teamName, @RequestParam int level, @RequestParam(defaultValue = "0.025") double minPercentagePlayed){
+    public ResponseTeam getTeamUnits(@RequestParam String teamName, @RequestParam int level, @RequestParam(defaultValue = "0.025") double minPercentagePlayed){
 
         return mainService.buildTeam(teamName,level,minPercentagePlayed);
-
     }
 
     @GetMapping("/team/get-items")
-    public List<Pair<String,Double>> getUnitItems(@RequestParam String unitName, @RequestParam(defaultValue = "5") int limit){
+    public List<ResponseItem> getUnitItems(@RequestParam String unitName, @RequestParam(defaultValue = "5") int limit){
+
         return mainService.findBestItemsForUnit(unitName,limit);
     }
 }

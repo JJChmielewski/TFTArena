@@ -1,9 +1,9 @@
 package com.jjchmielewski.tftarena.matrixbuilder;
 
-import com.jjchmielewski.tftarena.matrixbuilder.communitydragon.CommunityDragonHandler;
-import com.jjchmielewski.tftarena.entitis.documents.Team;
-import com.jjchmielewski.tftarena.entitis.documents.dummyClasses.Game;
-import com.jjchmielewski.tftarena.entitis.documents.unit.Unit;
+import com.jjchmielewski.tftarena.communitydragon.CommunityDragonHandler;
+import com.jjchmielewski.tftarena.riotapi.Team;
+import com.jjchmielewski.tftarena.riotapi.entities.Game;
+import com.jjchmielewski.tftarena.riotapi.unit.Unit;
 import com.jjchmielewski.tftarena.repository.GameRepository;
 import com.jjchmielewski.tftarena.service.MainService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,7 +49,6 @@ public class MatrixBuilder implements Runnable{
         this.collectData = collectData;
         this.setBeginning=setBeginning;
         this.mainService = mainService;
-        System.out.println("tutaj: "+ System.getenv("RIOT_KEY"));
     }
 
 

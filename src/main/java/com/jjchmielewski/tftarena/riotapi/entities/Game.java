@@ -1,7 +1,7 @@
-package com.jjchmielewski.tftarena.entitis.documents.dummyClasses;
+package com.jjchmielewski.tftarena.riotapi.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.jjchmielewski.tftarena.entitis.documents.GameInfo;
+import com.jjchmielewski.tftarena.riotapi.GameInfo;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;

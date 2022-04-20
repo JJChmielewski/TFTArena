@@ -1,4 +1,4 @@
-package com.jjchmielewski.tftarena.entitis.documents.unit;
+package com.jjchmielewski.tftarena.riotapi.unit;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Getter;
@@ -22,11 +22,7 @@ public class Unit {
     private int tier;
     private int offensiveComponentCount;
 
-    //community dragon fields
 
-    private String apiName;
-
-    private String[] traits;
 
     public Unit() {
     }
@@ -55,8 +51,6 @@ public class Unit {
                 ", items=" + Arrays.toString(items) +
                 ", tier=" + tier +
                 ", offensiveComponentCount=" + offensiveComponentCount +
-                ", apiName='" + apiName + '\'' +
-                ", traits=" + Arrays.toString(traits) +
                 '}';
     }
 }

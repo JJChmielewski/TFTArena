@@ -1,10 +1,8 @@
-package com.jjchmielewski.tftarena.entitis.documents;
+package com.jjchmielewski.tftarena.riotapi;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Getter;
 import lombok.Setter;
-
-import java.io.Serializable;
 
 @Getter
 @Setter
