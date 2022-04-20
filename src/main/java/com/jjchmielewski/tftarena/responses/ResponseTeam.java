@@ -15,6 +15,11 @@ public class ResponseTeam implements Comparable<ResponseTeam>{
 
     private double value;
 
+    public ResponseTeam(String teamName, double value) {
+        this.teamName = teamName;
+        this.value = value;
+    }
+
     public ResponseTeam(String teamName, List<ResponseUnit> units) {
         this.teamName = teamName;
         this.units = units;

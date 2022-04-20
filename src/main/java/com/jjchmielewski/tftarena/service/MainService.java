@@ -11,7 +11,6 @@ import com.jjchmielewski.tftarena.responses.ResponseUnit;
 import com.jjchmielewski.tftarena.riotapi.Team;
 import com.jjchmielewski.tftarena.riotapi.entities.Game;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -55,11 +54,11 @@ public class MainService {
         this.gameRepository = gameRepository;
     }
 
-    public Pair<String, Double>[] predictMatch(String[] teams){
+    public ResponseTeam[] predictMatch(String[] teams){
 
         int[] indexes = getTeamsIndexes(teams);
 
-        Pair<String, Double>[] strength = new Pair[teams.length];
+        ResponseTeam[] responseTeams = new ResponseTeam[teams.length];
 
         for(int i=0;i<teams.length;i++){
             double tempStrength=0.0;
@@ -68,111 +67,56 @@ public class MainService {
                 tempStrength+=matrix[indexes[i]][indexes[j]][0];
             }
 
-            Pair<String, Double> temp = Pair.of(teams[i], tempStrength);
-
-            strength[i] = temp;
+            responseTeams[i] = new ResponseTeam(teams[i], tempStrength);
         }
 
-        strength = this.sortPairsDesc(strength);
+        Arrays.sort(responseTeams, Collections.reverseOrder());
 
-        return strength;
+        return responseTeams;
     }
 
-    public Pair<String, Double>[] predictMatch(Team[] teams){
-
-        String[] teamNames = new String[teams.length];
-
-        for(int t=0;t<teams.length;t++){
-            teamNames[t] = teams[t].getTeamName();
-        }
-
-        Pair<String, Double>[] guessedTeams = predictMatch(teamNames);
-
-        for(int i=0;i< guessedTeams.length;i++){
-
-            for(int j=0;j<guessedTeams.length;j++){
-
-                if(guessedTeams[i].getFirst().equals(teams[j].getTeamName())){
-                    double unitWeight=0;
-                    int teamIndex = this.teamNames.indexOf(guessedTeams[i].getFirst());
-
-                    for(int u=0;u<teams[j].getUnits().length;u++){
-                        String unitName = teams[j].getUnits()[u].getCharacter_id()+"_"+teams[j].getUnits()[u].getTier();
-
-                        int unitIndex = this.unitNames.indexOf(unitName);
-
-                        if(unitIndex < 0){
-                            System.out.println(teams[j].getUnits()[u]);
-                            continue;
-                        }
-
-                        unitWeight+= (unitMatrix[teamIndex][unitIndex][1]/unitMatrix[teamIndex][unitIndex][3]) -
-                                (unitMatrix[teamIndex][unitIndex][0]/unitMatrix[teamIndex][unitIndex][2]);
-                    }
-
-                    guessedTeams[i] = Pair.of(guessedTeams[i].getFirst(), guessedTeams[i].getSecond()+unitWeight);
-                }
-
-            }
-
-        }
-
-        return this.sortPairsDesc(guessedTeams);
-
-    }
-
-    public Pair<String,Double>[] findBestTeams(String[] enemyTeams, double minPercentagePlayed){
+    public ResponseTeam[] findBestTeams(String[] enemyTeams, double minPercentagePlayed){
 
         int[] enemyIndexes = getTeamsIndexes(enemyTeams);
 
-        Pair<String,Double>[] teams = new Pair[matrix.length];
+        ResponseTeam[] teams = new ResponseTeam[matrix.length];
 
         for(int i=0;i<matrix.length;i++){
 
             double teamStrength = 0;
 
             if(matrix[i][i][2]/totalGames < minPercentagePlayed){
-                teamStrength = -7;
-                Pair<String, Double> team = Pair.of(teamNames.get(i), teamStrength);
 
-                teams[i] = team;
+                teamStrength = -7;
+
+                teams[i] = new ResponseTeam(teamNames.get(i), teamStrength);
                 continue;
             }
 
-            for(int e=0;e<enemyIndexes.length;e++){
+            for (int enemyIndex : enemyIndexes) {
 
-                teamStrength+=matrix[i][enemyIndexes[e]][0];
+                teamStrength += matrix[i][enemyIndex][0];
 
             }
 
-            Pair<String, Double> team = Pair.of(teamNames.get(i), teamStrength);
-
-            teams[i] = team;
+            teams[i] = new ResponseTeam(teamNames.get(i), teamStrength);
         }
 
-        teams = this.sortPairsDesc(teams);
+        Arrays.sort(teams, Collections.reverseOrder());
 
         return teams;
 
     }
 
-    public Pair<String,Double>[] findBestTeams(String[] enemyTeams, double minPercentagePlayed, int limit){
+    public ResponseTeam[] findBestTeams(String[] enemyTeams, double minPercentagePlayed, int limit){
 
         if(limit < 0)
             return null;
 
-        Pair<String,Double>[] teams = this.findBestTeams(enemyTeams, minPercentagePlayed);
+        ResponseTeam[] teams = this.findBestTeams(enemyTeams, minPercentagePlayed);
 
-        Pair<String,Double>[] returned = new Pair[limit];
+        return Arrays.copyOf(teams, limit);
 
-        if(teams == null)
-            return null;
-
-        for(int i=0; i < limit; i++){
-            returned[i] = teams[i];
-        }
-
-        return returned;
     }
 
     public ResponseTeam buildTeam(String teamName, int level, double minPercentagePlayed){
@@ -329,16 +273,15 @@ public class MainService {
                 continue;
             }
 
-            Pair<String, Double>[] data = predictMatch(teams);
-            //Pair<String, Double>[] data = predictMatch(teamComps);
+            ResponseTeam[] data = predictMatch(teams);
 
             String[] guessedTeams = new String[data.length];
             for(int i=0;i<data.length;i++){
-                guessedTeams[i] = data[i].getFirst();
+                guessedTeams[i] = data[i].getTeamName();
             }
 
             //method 1
-            for(int i=0;i<guessedTeams.length;i++){
+            for(int i=0;i< data.length;i++){
 
                 for(int j=0;j<teams.length;j++){
                     if(guessedTeams[i].equals(teams[j])){
@@ -377,21 +320,6 @@ public class MainService {
         return method1[method1.length-1];
     }
 
-    private Pair<String,Double>[] sortPairsDesc(Pair<String,Double>[] pairs){
-
-        if(pairs == null)
-            return  null;
-
-        Arrays.sort(pairs, new Comparator<Pair<String, Double>>() {
-            @Override
-            public int compare(Pair<String, Double> o1, Pair<String, Double> o2) {
-                return o2.getSecond().compareTo(o1.getSecond());
-            }
-        });
-
-        return pairs;
-    }
-
     private int[] getTeamsIndexes(String[] teams){
         int[] indexes = new int[teams.length];
 
@@ -422,16 +350,16 @@ public class MainService {
 
         this.traits = new HashMap<>();
 
-        for(int i=0; i< traits.length;i++){
-            this.traits.put(traits[i].name(), traits[i]);
+        for (CDTrait trait : traits) {
+            this.traits.put(trait.name(), trait);
         }
     }
 
     public void setUnits(CDUnit[] units) {
         this.units = new HashMap<>();
 
-        for(int i=0; i<units.length;i++){
-            this.units.put(units[i].apiName(), units[i]);
+        for (CDUnit unit : units) {
+            this.units.put(unit.apiName(), unit);
         }
 
     }

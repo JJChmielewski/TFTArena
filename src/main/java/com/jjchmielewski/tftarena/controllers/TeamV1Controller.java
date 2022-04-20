@@ -5,7 +5,6 @@ import com.jjchmielewski.tftarena.responses.ResponseItem;
 import com.jjchmielewski.tftarena.responses.ResponseTeam;
 import com.jjchmielewski.tftarena.service.MainService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.util.Pair;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,18 +23,19 @@ public class TeamV1Controller {
 
     @GetMapping("/check")
     public double checkAlgorithm(){
+
         return this.mainService.checkAlgorithm();
     }
 
     @GetMapping("/predict")
-    public Pair<String, Double>[] getMatchPrediction(@RequestBody String[] teams){
+    public ResponseTeam[] getMatchPrediction(@RequestBody String[] teams){
 
         return mainService.predictMatch(teams);
-
     }
 
     @GetMapping("/team/get-teams")
-    public Pair<String, Double>[] getBestTeams(@RequestBody String[] teams, @RequestParam(defaultValue = "0.025") double minPercentagePlayed, @RequestParam(defaultValue = "5") int limit){
+    public ResponseTeam[] getBestTeams(@RequestBody String[] teams, @RequestParam(defaultValue = "0.025") double minPercentagePlayed, @RequestParam(defaultValue = "5") int limit){
+
         return mainService.findBestTeams(teams,minPercentagePlayed, limit);
     }
 
