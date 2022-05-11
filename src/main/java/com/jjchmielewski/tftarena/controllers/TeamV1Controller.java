@@ -22,9 +22,9 @@ public class TeamV1Controller {
     }
 
     @GetMapping("/check")
-    public double checkAlgorithm(){
+    public void checkAlgorithm(){
 
-        return this.mainService.checkAlgorithm();
+        this.mainService.checkAlgorithm();
     }
 
     @GetMapping("/predict")

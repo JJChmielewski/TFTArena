@@ -251,73 +251,65 @@ public class MainService {
 
     }
 
-    public double checkAlgorithm(){
+    public void checkAlgorithm(){
 
         List<Game> games = gameRepository.findAll();
 
         int gamesNumber = games.size();
-        double[] method1 = new double[gamesNumber+1];
-        double[] method2 = new double[gamesNumber+1];
+        double[][] method1 = new double[8][gamesNumber+1];
 
         for(int g=0;g<gamesNumber;g++){
 
             Team[] teamComps = games.get(g).getInfo().getParticipants();
-            String[] teams = new String[teamComps.length];
+            List<String> teamList = new ArrayList<>();
+
+            for(int i=0;i<8;i++)
+                teamList.add("");
 
             for (Team team : teamComps) {
-                teams[team.getPlacement() - 1] = team.getTeamName();
+                teamList.set(team.getPlacement() - 1, team.getTeamName());
             }
 
-            if(teams[0] == null || teams[1] == null || teams[2] == null || teams[3] == null || teams[4] == null || teams[5] == null || teams[6] == null || teams[7] == null){
+
+            if(teamList.contains(null)){
                 System.out.println("Error in: " + games.get(g).getId());
                 continue;
             }
 
-            ResponseTeam[] data = predictMatch(teams);
+            for(int teamsAlive = 8; teamsAlive>0;teamsAlive--){
 
-            String[] guessedTeams = new String[data.length];
-            for(int i=0;i<data.length;i++){
-                guessedTeams[i] = data[i].getTeamName();
-            }
+                if(teamList.size() != teamsAlive)
+                    teamList.remove(teamsAlive-1);
 
-            //method 1
-            for(int i=0;i< data.length;i++){
+                ResponseTeam[] data = predictMatch(teamList.toArray(new String[0]));
 
-                for(int j=0;j<teams.length;j++){
-                    if(guessedTeams[i].equals(teams[j])){
-                        method1[g] += Math.abs(teams.length - j -guessedTeams.length + i);
+                String[] guessedTeams = new String[data.length];
+
+                //method 1
+                for(int i=0;i< data.length;i++){
+
+                    guessedTeams[i] = data[i].getTeamName();
+
+                    for(int j=0;j<teamList.size();j++){
+                        if(guessedTeams[i].equals(teamList.get(j))){
+                            method1[teamsAlive-1][g] += Math.abs(teamList.size() - j -guessedTeams.length + i);
+                        }
                     }
+
                 }
 
+                method1[teamsAlive-1][method1[teamsAlive-1].length-1] += method1[teamsAlive-1][g];
+                method1[teamsAlive-1][g] /= 32.0;
             }
-            method1[method1.length-1] += method1[g];
-            method1[g] /= 32.0;
 
-            //method 2
-            for(int i=0;i<guessedTeams.length;i++){
-
-                for(int j=0;j<teams.length;j++){
-                    if(guessedTeams[i].equals(teams[j])){
-                        method2[g] += Math.abs(j - i);
-
-                    }
-                }
-
-            }
-            method2[method2.length-1] += method2[g];
-            method2[g] /= 32.0;
 
         }
 
+        for(int i=0; i<8;i++){
+            method1[i][method1[i].length-1] /= 32 * (method1[i].length-1);
+            System.out.println(i+" Avg error: "+method1[i][method1[i].length-1]);
+        }
 
-        method1[method1.length-1] /= 32 * (method1.length-1);
-        method2[method2.length-1] /= 32 * (method2.length-1);
-
-
-        System.out.println("M1 Avg error: "+method1[method1.length-1]);
-        System.out.println("M2 Avg error: "+method2[method2.length-1]);
-
-        return method1[method1.length-1];
     }
 
     private int[] getTeamsIndexes(String[] teams){
