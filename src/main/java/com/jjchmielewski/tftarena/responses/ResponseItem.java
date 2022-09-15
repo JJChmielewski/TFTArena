@@ -19,6 +19,10 @@ public class ResponseItem implements Comparable<ResponseItem>{
         this.timesPlayed = timesPlayed;
     }
 
+    public ResponseItem(int id) {
+        this.id = id;
+    }
+
     @Override
     public int compareTo(ResponseItem o) {
         return Integer.compare(this.timesPlayed, o.getTimesPlayed());

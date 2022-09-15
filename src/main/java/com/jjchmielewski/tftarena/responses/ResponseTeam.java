@@ -1,8 +1,11 @@
 package com.jjchmielewski.tftarena.responses;
 
+import com.jjchmielewski.tftarena.riotapi.Team;
+import com.jjchmielewski.tftarena.riotapi.unit.Unit;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -23,6 +26,14 @@ public class ResponseTeam implements Comparable<ResponseTeam>{
     public ResponseTeam(String teamName, List<ResponseUnit> units) {
         this.teamName = teamName;
         this.units = units;
+    }
+
+    public ResponseTeam(Team team) {
+        teamName = team.getTeamName();
+        units = new ArrayList<>();
+        for (Unit unit : team.getUnits()) {
+            units.add(new ResponseUnit(unit));
+        }
     }
 
     @Override

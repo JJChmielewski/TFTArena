@@ -4,12 +4,14 @@ import com.jjchmielewski.tftarena.communitydragon.CDItem;
 import com.jjchmielewski.tftarena.communitydragon.CDTrait;
 import com.jjchmielewski.tftarena.communitydragon.CDUnit;
 import com.jjchmielewski.tftarena.communitydragon.stats.CDEffect;
+import com.jjchmielewski.tftarena.metatft.MetaMatchData;
 import com.jjchmielewski.tftarena.repository.GameRepository;
 import com.jjchmielewski.tftarena.responses.ResponseItem;
 import com.jjchmielewski.tftarena.responses.ResponseTeam;
 import com.jjchmielewski.tftarena.responses.ResponseUnit;
 import com.jjchmielewski.tftarena.riotapi.Team;
 import com.jjchmielewski.tftarena.riotapi.entities.Game;
+import com.jjchmielewski.tftarena.riotapi.unit.Unit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -25,10 +27,13 @@ public class MainService {
     private double[][][] matrix;
 
     //team, unit, 0 sum place when in, 1 sum place when not, 2 times played, 3 times not played
-    private double[][][] unitMatrix;
+    private double[][][] teamUnitMatrix;
 
-    //unit, item, 0 times played
+    //unit, item, 0 times played, 1 sum of places
     private int[][][] itemMatrix;
+
+    //sum of places, times played
+    private double[][] unitMatrix;
 
     //indexes of matrices
     private List<String> teamNames;
@@ -73,6 +78,37 @@ public class MainService {
         Arrays.sort(responseTeams, Collections.reverseOrder());
 
         return responseTeams;
+    }
+
+    public ResponseTeam[] predictMatchBasedOnUnits(ResponseTeam[] teams) {
+
+        for (ResponseTeam team : teams) {
+            double unitStrength = 0;
+            for (ResponseUnit unit : team.getUnits()) {
+                unitStrength += unitMatrix[unitNames.indexOf(unit.getApiNameWithTier())][0] / unitMatrix[unitNames.indexOf(unit.getApiNameWithTier())][1];
+            }
+            team.setValue(unitStrength);
+        }
+
+        Arrays.sort(teams, Collections.reverseOrder());
+
+        return teams;
+    }
+
+    public ResponseTeam[] predictMatchBasedOnItems(ResponseTeam[] teams) {
+        for (ResponseTeam team : teams) {
+            double itemStrength = 0;
+            for (ResponseUnit unit : team.getUnits()) {
+                for (ResponseItem item : unit.getItems()) {
+                    itemStrength += itemMatrix[unitNames.indexOf(unit.getApiNameWithTier())][itemIDs.indexOf(item.getId())][0];
+                }
+            }
+            team.setValue(itemStrength);
+        }
+
+        Arrays.sort(teams, Collections.reverseOrder());
+
+        return teams;
     }
 
     public ResponseTeam[] findBestTeams(String[] enemyTeams, double minPercentagePlayed){
@@ -133,11 +169,11 @@ public class MainService {
         List<ResponseUnit> unitsWithTrait = new ArrayList<>();
         ResponseUnit mainUnit = null;
 
-        for(int u=0;u<unitMatrix[teamIndex].length;u++){
+        for(int u = 0; u< teamUnitMatrix[teamIndex].length; u++){
 
-            if(unitMatrix[teamIndex][u][2]/(unitMatrix[teamIndex][u][2] + unitMatrix[teamIndex][u][3]) >= minPercentagePlayed){
+            if(teamUnitMatrix[teamIndex][u][2]/(teamUnitMatrix[teamIndex][u][2] + teamUnitMatrix[teamIndex][u][3]) >= minPercentagePlayed){
 
-                double[] unitData = unitMatrix[teamIndex][u];
+                double[] unitData = teamUnitMatrix[teamIndex][u];
 
                 double value;
 
@@ -185,9 +221,9 @@ public class MainService {
             String[] unitSplit;
 
             if(teamUnits.size() < teamEffect.minUnits() && l<unitsWithTrait.size())
-                unitSplit = unitsWithTrait.get(l).getApiName().split("_");
+                unitSplit = unitsWithTrait.get(l).getApiNameWithTier().split("_");
             else
-                unitSplit = validUnits.get(l-teamUnits.size()).getApiName().split("_");
+                unitSplit = validUnits.get(l-teamUnits.size()).getApiNameWithTier().split("_");
 
             if(!teamUnitNames.contains(unitSplit[1])){
 
@@ -199,7 +235,7 @@ public class MainService {
                 }
 
                 if(!teamUnits.contains(mainUnit) && mainUnit != null){
-                    teamUnitNames.add(mainUnit.getApiName().split("_")[1]);
+                    teamUnitNames.add(mainUnit.getApiNameWithTier().split("_")[1]);
                     teamUnits.add(mainUnit);
                     continue;
                 }
@@ -257,36 +293,56 @@ public class MainService {
 
         int gamesNumber = games.size();
         double[][] method1 = new double[8][gamesNumber+1];
+        double[][] itemsOnly = new double[8][gamesNumber+1];
+        double[][] unitsOnly = new double[8][gamesNumber+1];
+        int[] maxValues = new int[]{0,2,4,8,12,18,24,32};
 
         for(int g=0;g<gamesNumber;g++){
 
             Team[] teamComps = games.get(g).getInfo().getParticipants();
+            ResponseTeam[] teams = new ResponseTeam[teamComps.length];
             List<String> teamList = new ArrayList<>();
 
-            for(int i=0;i<8;i++)
+            for(int i=0;i<8;i++) {
                 teamList.add("");
+                teams[i] = new ResponseTeam(teamComps[i]);
+            }
 
             for (Team team : teamComps) {
                 teamList.set(team.getPlacement() - 1, team.getTeamName());
             }
 
+            List<ResponseTeam> unitMethodTeamList = new ArrayList<>();
+            unitMethodTeamList.addAll(Arrays.asList(predictMatchBasedOnUnits(teams)));
 
-            if(teamList.contains(null)){
+            List<ResponseTeam> itemMethodTeamList = new ArrayList<>();
+            itemMethodTeamList.addAll(Arrays.asList(predictMatchBasedOnItems(teams)));
+
+            if(teamList.contains(null) || unitMethodTeamList.contains(null) || itemMethodTeamList.contains(null)){
                 System.out.println("Error in: " + games.get(g).getId());
                 continue;
             }
 
-            for(int teamsAlive = 8; teamsAlive>0;teamsAlive--){
+            for(int teamsAlive = 8; teamsAlive>1;teamsAlive--){
 
-                if(teamList.size() != teamsAlive)
-                    teamList.remove(teamsAlive-1);
+                if(teamList.size() != teamsAlive) {
+                    teamList.remove(teamsAlive - 1);
+                }
+
+                if(unitMethodTeamList.size() != teamsAlive) {
+                    unitMethodTeamList.remove(teamsAlive - 1);
+                }
+
+                if(itemMethodTeamList.size() != teamsAlive) {
+                    itemMethodTeamList.remove(teamsAlive - 1);
+                }
 
                 ResponseTeam[] data = predictMatch(teamList.toArray(new String[0]));
 
                 String[] guessedTeams = new String[data.length];
 
                 //method 1
-                for(int i=0;i< data.length;i++){
+                for(int i=0;i<data.length;i++){
 
                     guessedTeams[i] = data[i].getTeamName();
 
@@ -294,21 +350,66 @@ public class MainService {
                         if(guessedTeams[i].equals(teamList.get(j))){
                             method1[teamsAlive-1][g] += Math.abs(teamList.size() - j -guessedTeams.length + i);
                         }
+                        if(unitMethodTeamList.get(i).getTeamName().equals(teamList.get(j))){
+                            unitsOnly[teamsAlive-1][g] += Math.abs(teamList.size() - j -unitMethodTeamList.size() + i);
+                        }
+                        if (itemMethodTeamList.get(i).getTeamName().equals(teamList.get(j))) {
+                            itemsOnly[teamsAlive - 1][g] += Math.abs(teamList.size() - j -itemMethodTeamList.size() + i);
+                        }
                     }
 
                 }
 
                 method1[teamsAlive-1][method1[teamsAlive-1].length-1] += method1[teamsAlive-1][g];
-                method1[teamsAlive-1][g] /= 32.0;
+                method1[teamsAlive-1][g] /= maxValues[teamsAlive-1];
+                unitsOnly[teamsAlive-1][unitsOnly[teamsAlive-1].length-1] += unitsOnly[teamsAlive-1][g];
+                unitsOnly[teamsAlive-1][g] /= maxValues[teamsAlive-1];
+
+                itemsOnly[teamsAlive-1][itemsOnly[teamsAlive-1].length-1] += itemsOnly[teamsAlive-1][g];
+                itemsOnly[teamsAlive-1][g] /= maxValues[teamsAlive-1];
             }
 
 
         }
 
-        for(int i=0; i<8;i++){
-            method1[i][method1[i].length-1] /= 32 * (method1[i].length-1);
-            System.out.println(i+" Avg error: "+method1[i][method1[i].length-1]);
+        for(int i=1; i<8;i++){
+            System.out.println(i+" Avg error: "+(method1[i][method1[i].length-1] /( maxValues[i] * (method1[i].length-1))));
         }
+
+        System.out.println("\n");
+
+        for(int i=1; i<8;i++){
+            System.out.println(i+" Avg error: "+(method1[i][method1[i].length-1] /( maxValues[7] * (method1[i].length-1))));
+        }
+
+        System.out.println("\n");
+
+        for(int i=1; i<8;i++){
+            System.out.println(i+" Avg unit error: "+(unitsOnly[i][unitsOnly[i].length-1] /( maxValues[i] * (unitsOnly[i].length-1))));
+        }
+
+        System.out.println("\n");
+
+        for(int i=1; i<8;i++){
+            System.out.println(i+" Avg error: "+(unitsOnly[i][unitsOnly[i].length-1] /( maxValues[7] * (unitsOnly[i].length-1))));
+        }
+
+        System.out.println("\n");
+
+        for(int i=1; i<8;i++){
+            System.out.println(i+" Avg unit error: "+(itemsOnly[i][itemsOnly[i].length-1] /( maxValues[i] * (itemsOnly[i].length-1))));
+        }
+
+        System.out.println("\n");
+
+        for(int i=1; i<8;i++){
+            System.out.println(i+" Avg error: "+(itemsOnly[i][itemsOnly[i].length-1] /( maxValues[7] * (itemsOnly[i].length-1))));
+        }
+    }
+
+    public void checkAlgorithmWithMetaTftData() {
+
+
 
     }
 
@@ -369,17 +470,17 @@ public class MainService {
     }
 
     public void setMatrixData(double[][][] matrix, List<String> teamNames,
-                              double[][][] unitMatrix, int[][][] itemMatrix,
+                              double[][][] teamUnitMatrix, int[][][] itemMatrix,
                               List<String> unitNames, List<Integer> itemIndexes,
-                              int totalGames){
+                              int totalGames, double[][] unitMatrix){
 
         this.matrix = matrix;
         this.teamNames = teamNames;
-        this.unitMatrix = unitMatrix;
+        this.teamUnitMatrix = teamUnitMatrix;
         this.itemMatrix = itemMatrix;
         this.unitNames = unitNames;
         this.itemIDs = itemIndexes;
         this.totalGames= totalGames;
-
+        this.unitMatrix = unitMatrix;
     }
 }

@@ -1,6 +1,7 @@
 package com.jjchmielewski.tftarena.riotapi.unit;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.jjchmielewski.tftarena.metatft.MetaUnit;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
@@ -21,6 +22,11 @@ public class Unit implements Comparable<Unit>{
     private int offensiveComponentCount;
 
     public Unit() {
+    }
+
+    public Unit(MetaUnit metaUnit) {
+        this.character_id = metaUnit.getUnit();
+        this.tier = metaUnit.getTier();
     }
 
     public void countOffensiveComponents(){

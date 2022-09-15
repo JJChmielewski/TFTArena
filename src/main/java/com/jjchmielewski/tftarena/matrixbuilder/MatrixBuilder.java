@@ -1,6 +1,8 @@
 package com.jjchmielewski.tftarena.matrixbuilder;
 
 import com.jjchmielewski.tftarena.communitydragon.CommunityDragonHandler;
+import com.jjchmielewski.tftarena.metatft.MetaMatchData;
+import com.jjchmielewski.tftarena.metatft.MetaTftDataCollector;
 import com.jjchmielewski.tftarena.riotapi.Team;
 import com.jjchmielewski.tftarena.riotapi.entities.Game;
 import com.jjchmielewski.tftarena.riotapi.unit.Unit;
@@ -60,6 +62,8 @@ public class MatrixBuilder implements Runnable{
         graphBuilderThread.start();
 
         communityDragonHandler.readCommunityDragon();
+
+        MetaTftDataCollector.getMetaTftMatchData();
     }
 
     @Override
@@ -131,8 +135,9 @@ public class MatrixBuilder implements Runnable{
         List<String> unitNames = new ArrayList<>();
         List<Integer> itemIndexes = new ArrayList<>();
         double[][][] strengthMatrix;
-        double[][][] unitMatrix;
+        double[][][] teamUnitMatrix;
         int[][][] itemMatrix;
+        double[][] unitMatrix;
 
         System.out.println("Starting");
 
@@ -169,10 +174,13 @@ public class MatrixBuilder implements Runnable{
         strengthMatrix = new double[teamNames.size()][teamNames.size()][3];
 
         //sum place when in, sum place when not, times played, times not played
-        unitMatrix = new double[teamNames.size()][unitNames.size()][4];
+        teamUnitMatrix = new double[teamNames.size()][unitNames.size()][4];
 
         //times played
         itemMatrix = new int[unitNames.size()][itemIndexes.size()][1];
+
+        //sum of place, times played
+        unitMatrix = new double[unitNames.size()][2];
 
         System.out.println(unitNames.size());
 
@@ -213,12 +221,15 @@ public class MatrixBuilder implements Runnable{
 
                     if(teamUnits.contains(unitNames.get(unitIndex))){
 
-                        unitMatrix[teamIndex][unitIndex][0] += team.getPlacement();
-                        unitMatrix[teamIndex][unitIndex][2]++;
+                        teamUnitMatrix[teamIndex][unitIndex][0] += team.getPlacement();
+                        teamUnitMatrix[teamIndex][unitIndex][2]++;
+
+                        unitMatrix[unitIndex][0] += team.getPlacement();
+                        unitMatrix[unitIndex][1]++;
                     }
                     else {
-                        unitMatrix[teamIndex][unitIndex][1] += team.getPlacement();
-                        unitMatrix[teamIndex][unitIndex][3]++;
+                        teamUnitMatrix[teamIndex][unitIndex][1] += team.getPlacement();
+                        teamUnitMatrix[teamIndex][unitIndex][3]++;
                     }
                 }
 
@@ -238,7 +249,7 @@ public class MatrixBuilder implements Runnable{
             }
         }
 
-        mainService.setMatrixData(strengthMatrix, teamNames,unitMatrix,itemMatrix,unitNames,itemIndexes,games.size());
+        mainService.setMatrixData(strengthMatrix, teamNames,teamUnitMatrix,itemMatrix,unitNames,itemIndexes,games.size(), unitMatrix);
 
         System.out.println("Matrices built");
 
