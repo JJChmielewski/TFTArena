@@ -24,13 +24,9 @@ public class TeamV1Controller {
     @GetMapping("/check")
     public void checkAlgorithm(){
 
-        this.mainService.checkAlgorithm();
-    }
+        //this.mainService.checkAlgorithm();
 
-    @GetMapping("/predict")
-    public ResponseTeam[] getMatchPrediction(@RequestBody String[] teams){
-
-        return mainService.predictMatch(teams);
+        this.mainService.checkAlgorithmWithMetaTftData();
     }
 
     @GetMapping("/team/get-teams")

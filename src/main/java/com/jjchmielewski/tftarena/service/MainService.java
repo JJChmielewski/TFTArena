@@ -5,14 +5,19 @@ import com.jjchmielewski.tftarena.communitydragon.CDTrait;
 import com.jjchmielewski.tftarena.communitydragon.CDUnit;
 import com.jjchmielewski.tftarena.communitydragon.stats.CDEffect;
 import com.jjchmielewski.tftarena.metatft.MetaMatchData;
+import com.jjchmielewski.tftarena.metatft.MetaTftDataCollector;
+import com.jjchmielewski.tftarena.metatft.MetaUnit;
 import com.jjchmielewski.tftarena.repository.GameRepository;
 import com.jjchmielewski.tftarena.responses.ResponseItem;
 import com.jjchmielewski.tftarena.responses.ResponseTeam;
 import com.jjchmielewski.tftarena.responses.ResponseUnit;
+import com.jjchmielewski.tftarena.riotapi.GameInfo;
 import com.jjchmielewski.tftarena.riotapi.Team;
 import com.jjchmielewski.tftarena.riotapi.entities.Game;
+import com.jjchmielewski.tftarena.riotapi.unit.Trait;
 import com.jjchmielewski.tftarena.riotapi.unit.Unit;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -53,17 +58,23 @@ public class MainService {
     //key id
     private Map<Integer, CDItem> items;
 
+    @Value("${tftarena.current-set}")
+    private int currentSet;
+
 
     @Autowired
     public MainService(GameRepository gameRepository) {
         this.gameRepository = gameRepository;
     }
 
-    public ResponseTeam[] predictMatch(String[] teams){
+    public ResponseTeam[] predictMatch(ResponseTeam[] teams){
 
-        int[] indexes = getTeamsIndexes(teams);
+        String[] teamNames = new String[teams.length];
+        for (int i = 0; i < teams.length; i++) {
+            teamNames[i] = teams[i].getTeamName();
+        }
 
-        ResponseTeam[] responseTeams = new ResponseTeam[teams.length];
+        int[] indexes = getTeamsIndexes(teamNames);
 
         for(int i=0;i<teams.length;i++){
             double tempStrength=0.0;
@@ -71,13 +82,12 @@ public class MainService {
             for(int j=0;j<teams.length;j++){
                 tempStrength+=matrix[indexes[i]][indexes[j]][0];
             }
-
-            responseTeams[i] = new ResponseTeam(teams[i], tempStrength);
+            teams[i].setValue(tempStrength);
         }
 
-        Arrays.sort(responseTeams, Collections.reverseOrder());
+        Arrays.sort(teams, Collections.reverseOrder());
 
-        return responseTeams;
+        return teams;
     }
 
     public ResponseTeam[] predictMatchBasedOnUnits(ResponseTeam[] teams) {
@@ -287,9 +297,11 @@ public class MainService {
 
     }
 
-    public void checkAlgorithm(){
+    public void checkAlgorithm() {
+        checkAlgorithm(gameRepository.findAll());
+    }
 
-        List<Game> games = gameRepository.findAll();
+    public void checkAlgorithm(List<Game> games){
 
         int gamesNumber = games.size();
         double[][] method1 = new double[8][gamesNumber+1];
@@ -301,85 +313,64 @@ public class MainService {
 
             Team[] teamComps = games.get(g).getInfo().getParticipants();
             ResponseTeam[] teams = new ResponseTeam[teamComps.length];
-            List<String> teamList = new ArrayList<>();
 
-            for(int i=0;i<8;i++) {
-                teamList.add("");
+            for(int i=0;i<teamComps.length;i++) {
                 teams[i] = new ResponseTeam(teamComps[i]);
             }
 
-            for (Team team : teamComps) {
-                teamList.set(team.getPlacement() - 1, team.getTeamName());
-            }
-
-            List<ResponseTeam> unitMethodTeamList = new ArrayList<>();
-            unitMethodTeamList.addAll(Arrays.asList(predictMatchBasedOnUnits(teams)));
-
-            List<ResponseTeam> itemMethodTeamList = new ArrayList<>();
-            itemMethodTeamList.addAll(Arrays.asList(predictMatchBasedOnItems(teams)));
-
-            if(teamList.contains(null) || unitMethodTeamList.contains(null) || itemMethodTeamList.contains(null)){
-                System.out.println("Error in: " + games.get(g).getId());
-                continue;
-            }
-
-            for(int teamsAlive = 8; teamsAlive>1;teamsAlive--){
-
-                if(teamList.size() != teamsAlive) {
-                    teamList.remove(teamsAlive - 1);
-                }
-
-                if(unitMethodTeamList.size() != teamsAlive) {
-                    unitMethodTeamList.remove(teamsAlive - 1);
-                }
-
-                if(itemMethodTeamList.size() != teamsAlive) {
-                    itemMethodTeamList.remove(teamsAlive - 1);
-                }
-
-                ResponseTeam[] data = predictMatch(teamList.toArray(new String[0]));
-
-                String[] guessedTeams = new String[data.length];
-
-                //method 1
-                for(int i=0;i<data.length;i++){
-
-                    guessedTeams[i] = data[i].getTeamName();
-
-                    for(int j=0;j<teamList.size();j++){
-                        if(guessedTeams[i].equals(teamList.get(j))){
-                            method1[teamsAlive-1][g] += Math.abs(teamList.size() - j -guessedTeams.length + i);
-                        }
-                        if(unitMethodTeamList.get(i).getTeamName().equals(teamList.get(j))){
-                            unitsOnly[teamsAlive-1][g] += Math.abs(teamList.size() - j -unitMethodTeamList.size() + i);
-                        }
-                        if (itemMethodTeamList.get(i).getTeamName().equals(teamList.get(j))) {
-                            itemsOnly[teamsAlive - 1][g] += Math.abs(teamList.size() - j -itemMethodTeamList.size() + i);
-                        }
+            ResponseTeam[] method1Array = predictMatch(teams);
+            boolean isMethod1Valid = false;
+            for (int i = 0 ; i < method1Array.length; i++) {
+                method1[method1Array.length - 1][g] += Math.abs(method1Array[i].getPlacement() - i - 1);
+                for (ResponseTeam team : method1Array) {
+                    if (team.getValue() > 0){
+                        isMethod1Valid = true;
                     }
-
                 }
-
-                method1[teamsAlive-1][method1[teamsAlive-1].length-1] += method1[teamsAlive-1][g];
-                method1[teamsAlive-1][g] /= maxValues[teamsAlive-1];
-                unitsOnly[teamsAlive-1][unitsOnly[teamsAlive-1].length-1] += unitsOnly[teamsAlive-1][g];
-                unitsOnly[teamsAlive-1][g] /= maxValues[teamsAlive-1];
-
-                itemsOnly[teamsAlive-1][itemsOnly[teamsAlive-1].length-1] += itemsOnly[teamsAlive-1][g];
-                itemsOnly[teamsAlive-1][g] /= maxValues[teamsAlive-1];
             }
+            if (!isMethod1Valid) {
+                method1[method1Array.length - 1][g] = 0;
+            }
+            method1[method1Array.length-1][method1[method1Array.length-1].length-1] += method1[method1Array.length-1][g];
+            method1[method1Array.length-1][g] /= maxValues[method1Array.length-1];
 
 
+            ResponseTeam[] unitMethodArray = predictMatchBasedOnUnits(teams);
+            boolean isUnitMethodValid = false;
+            for (int i = 0; i < unitMethodArray.length; i++) {
+                unitsOnly[unitMethodArray.length-1][g] += Math.abs(unitMethodArray[i].getPlacement() - i - 1);
+                for (ResponseTeam team : unitMethodArray) {
+                    if (team.getValue() > 0) {
+                        isUnitMethodValid = true;
+                    }
+                }
+            }
+            if (!isUnitMethodValid) {
+                unitsOnly[unitMethodArray.length-1][g] = 0;
+            }
+            unitsOnly[unitMethodArray.length-1][unitsOnly[unitMethodArray.length-1].length-1] += unitsOnly[unitMethodArray.length-1][g];
+            unitsOnly[unitMethodArray.length-1][g] /= maxValues[unitMethodArray.length-1];
+
+
+            ResponseTeam[] itemMethodArray = predictMatchBasedOnItems(teams);
+            boolean isItemMethodValid = false;
+            for (int i = 0; i < itemMethodArray.length; i++) {
+                itemsOnly[itemMethodArray.length - 1][g] += Math.abs(itemMethodArray[i].getPlacement() - i - 1);
+                for (ResponseTeam team : itemMethodArray) {
+                    if (team.getValue() > 0) {
+                        isItemMethodValid = true;
+                    }
+                }
+            }
+            if (!isItemMethodValid) {
+                itemsOnly[itemMethodArray.length - 1][g] = 0;
+            }
+            itemsOnly[itemMethodArray.length-1][itemsOnly[itemMethodArray.length-1].length-1] += itemsOnly[itemMethodArray.length-1][g];
+            itemsOnly[itemMethodArray.length-1][g] /= maxValues[itemMethodArray.length-1];
         }
 
         for(int i=1; i<8;i++){
             System.out.println(i+" Avg error: "+(method1[i][method1[i].length-1] /( maxValues[i] * (method1[i].length-1))));
-        }
-
-        System.out.println("\n");
-
-        for(int i=1; i<8;i++){
-            System.out.println(i+" Avg error: "+(method1[i][method1[i].length-1] /( maxValues[7] * (method1[i].length-1))));
         }
 
         System.out.println("\n");
@@ -391,26 +382,28 @@ public class MainService {
         System.out.println("\n");
 
         for(int i=1; i<8;i++){
-            System.out.println(i+" Avg error: "+(unitsOnly[i][unitsOnly[i].length-1] /( maxValues[7] * (unitsOnly[i].length-1))));
-        }
-
-        System.out.println("\n");
-
-        for(int i=1; i<8;i++){
-            System.out.println(i+" Avg unit error: "+(itemsOnly[i][itemsOnly[i].length-1] /( maxValues[i] * (itemsOnly[i].length-1))));
-        }
-
-        System.out.println("\n");
-
-        for(int i=1; i<8;i++){
-            System.out.println(i+" Avg error: "+(itemsOnly[i][itemsOnly[i].length-1] /( maxValues[7] * (itemsOnly[i].length-1))));
+            System.out.println(i+" Avg item error: "+(itemsOnly[i][itemsOnly[i].length-1] /( maxValues[i] * (itemsOnly[i].length-1))));
         }
     }
 
     public void checkAlgorithmWithMetaTftData() {
 
+        MetaMatchData[] metaMatchData = MetaTftDataCollector.getMetaTftMatchData();
+        List<Game> games = new ArrayList<>();
 
+        for (MetaMatchData matchData : metaMatchData) {
+            Team player, opponent;
+            player = convertMetaTftToRiotApi(matchData.getPlayer_units(), matchData.getPlayer_full_traits(), matchData.getWin() == 1 ? 1 : 2);
+            opponent = convertMetaTftToRiotApi(matchData.getOpponent_units(), matchData.getOpponent_full_traits(), matchData.getWin() == 0 ? 1 : 2);
 
+            GameInfo gameInfo = new GameInfo();
+            gameInfo.setParticipants(new Team[]{player, opponent});
+            Game game = new Game();
+            game.setInfo(gameInfo);
+            games.add(game);
+        }
+
+        checkAlgorithm(games);
     }
 
     private int[] getTeamsIndexes(String[] teams){
@@ -482,5 +475,53 @@ public class MainService {
         this.itemIDs = itemIndexes;
         this.totalGames= totalGames;
         this.unitMatrix = unitMatrix;
+    }
+
+    private Team convertMetaTftToRiotApi(MetaUnit[] playerUnits, String[] playerTraits, int placement) {
+
+        Map<String, Integer> newTeamTraits = new HashMap<>();
+
+        for (MetaUnit unit : playerUnits) {
+            CDUnit cdUnit = units.get(unit.getUnit());
+
+            for (String trait : cdUnit.traits()) {
+                if (newTeamTraits.containsKey(trait)) {
+                    newTeamTraits.put(trait, newTeamTraits.get(trait)+1);
+                } else {
+                    newTeamTraits.put(trait, 0);
+                }
+            }
+        }
+
+        List<Trait> riotTraits = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : newTeamTraits.entrySet()) {
+            Trait trait = new Trait();
+
+            trait.setName("TFT"+currentSet+"_"+entry.getKey());
+            trait.setNum_units(entry.getValue());
+
+            for (String playerTrait : playerTraits) {
+                if (playerTrait.split("_")[0].equals(entry.getKey())) {
+                    trait.setStyle(Integer.parseInt(playerTrait.split("_")[1]));
+                    break;
+                }
+            }
+
+            if (trait.getStyle() > 0) {
+                riotTraits.add(trait);
+            }
+        }
+        Unit[] riotUnits = new Unit[playerUnits.length];
+
+        for (int i=0; i< playerUnits.length; i++) {
+            riotUnits[i] = new Unit(playerUnits[i]);
+        }
+
+        Team resultTeam = new Team();
+        resultTeam.setUnits(riotUnits);
+        resultTeam.setTraits(riotTraits.toArray(new Trait[0]));
+        resultTeam.setPlacement(placement);
+
+        return resultTeam;
     }
 }

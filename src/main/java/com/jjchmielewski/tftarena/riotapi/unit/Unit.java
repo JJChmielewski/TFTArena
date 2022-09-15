@@ -27,9 +27,14 @@ public class Unit implements Comparable<Unit>{
     public Unit(MetaUnit metaUnit) {
         this.character_id = metaUnit.getUnit();
         this.tier = metaUnit.getTier();
+        this.items = metaUnit.getItemIDs();
     }
 
     public void countOffensiveComponents(){
+
+        if (items == null) {
+            return;
+        }
 
         offensiveComponentCount = 0;
 

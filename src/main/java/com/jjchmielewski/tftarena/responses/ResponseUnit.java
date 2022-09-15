@@ -26,6 +26,10 @@ public class ResponseUnit implements Comparable<ResponseUnit>{
     public ResponseUnit(Unit unit) {
         apiNameWithTier = unit.getCharacter_id() +"_"+ unit.getTier();
         items = new ArrayList<>();
+        if (unit.getItems() == null) {
+            return;
+        }
+
         for (int item : unit.getItems()) {
             items.add(new ResponseItem(item));
         }

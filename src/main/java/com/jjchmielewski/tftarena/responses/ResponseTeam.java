@@ -16,6 +16,8 @@ public class ResponseTeam implements Comparable<ResponseTeam>{
 
     private List<ResponseUnit> units;
 
+    private int placement;
+
     private double value;
 
     public ResponseTeam(String teamName, double value) {
@@ -31,6 +33,7 @@ public class ResponseTeam implements Comparable<ResponseTeam>{
     public ResponseTeam(Team team) {
         teamName = team.getTeamName();
         units = new ArrayList<>();
+        placement = team.getPlacement();
         for (Unit unit : team.getUnits()) {
             units.add(new ResponseUnit(unit));
         }
