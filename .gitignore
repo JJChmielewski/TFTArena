@@ -34,3 +34,4 @@ build/
 
 test.csv
 test.txt
+!/set7_round_data_clean_2.csv
