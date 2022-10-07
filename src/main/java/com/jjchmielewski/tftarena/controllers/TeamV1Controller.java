@@ -24,7 +24,7 @@ public class TeamV1Controller {
     @GetMapping("/check")
     public void checkAlgorithm(){
 
-        //this.mainService.checkAlgorithm();
+        this.mainService.checkAlgorithm();
 
         this.mainService.checkAlgorithmWithMetaTftData();
     }

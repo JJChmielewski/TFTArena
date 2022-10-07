@@ -4,8 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.jjchmielewski.tftarena.metatft.MetaUnit;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Arrays;
 
@@ -27,7 +25,7 @@ public class Unit implements Comparable<Unit>{
     public Unit(MetaUnit metaUnit) {
         this.character_id = metaUnit.getUnit();
         this.tier = metaUnit.getTier();
-        this.items = metaUnit.getItemIDs();
+        this.items = metaUnit.getItem_ids();
     }
 
     public void countOffensiveComponents(){

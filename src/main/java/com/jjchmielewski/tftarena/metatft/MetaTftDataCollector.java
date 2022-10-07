@@ -8,22 +8,27 @@ import com.opencsv.bean.CsvToBeanBuilder;
 import com.opencsv.exceptions.CsvBeanIntrospectionException;
 import com.opencsv.exceptions.CsvChainedException;
 import com.opencsv.exceptions.CsvFieldAssignmentException;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.List;
 
+@Component
 public class MetaTftDataCollector {
 
-    public static MetaMatchData[] getMetaTftMatchData() {
+    @Value("${metatft.datasource}")
+    private String metaTftDatasource;
 
-        String metaTftFile = "metaTft_test_data.csv";
+    public MetaMatchData[] getMetaTftMatchData() {
+        return getMetaTftMatchData(metaTftDatasource);
+    }
+    public MetaMatchData[] getMetaTftMatchData(String datasource) {
 
         try {
-            List<MetaMatchData> matchData = new CsvToBeanBuilder<MetaMatchData>(new FileReader(metaTftFile))
+            List<MetaMatchData> matchData = new CsvToBeanBuilder<MetaMatchData>(new FileReader(datasource))
                     .withMappingStrategy(new MetaTftMappingStrategy()).withSeparator(';').withSkipLines(1).build().parse();
-
-            matchData.forEach(System.out::println);
 
             return matchData.toArray(matchData.toArray(new MetaMatchData[0]));
         }catch (FileNotFoundException e){
@@ -57,7 +62,9 @@ public class MetaTftDataCollector {
                 metaMatchData.setPlayer_full_traits(objectMapper.readValue(line[4], String[].class));
                 metaMatchData.setOpponent_full_traits(objectMapper.readValue(line[5], String[].class));
                 metaMatchData.setWin(objectMapper.readValue(line[6], Double.class));
-                metaMatchData.setOpponent_health_lost(objectMapper.readValue(line[7], Double.class));
+                if (!line[7].isBlank()) {
+                    metaMatchData.setOpponent_health_lost(objectMapper.readValue(line[7], Double.class));
+                }
                 metaMatchData.setPlayer_health_lost(objectMapper.readValue(line[8], Double.class));
             } catch (JsonProcessingException e) {
                 e.printStackTrace();

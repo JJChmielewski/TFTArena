@@ -15,7 +15,7 @@ public class MetaUnit {
     private String loc;
     private int cost;
     private String name;
-    private int[] itemIDs;
+    private int[] item_ids;
 
     public MetaUnit() {
     }
@@ -29,7 +29,7 @@ public class MetaUnit {
                 ", loc='" + loc + '\'' +
                 ", cost=" + cost +
                 ", name='" + name + '\'' +
-                ", itemIDs=" + Arrays.toString(itemIDs) +
+                ", itemIDs=" + Arrays.toString(item_ids) +
                 '}';
     }
 }

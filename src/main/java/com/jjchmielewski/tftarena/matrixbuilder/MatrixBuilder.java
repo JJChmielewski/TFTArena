@@ -29,11 +29,15 @@ public class MatrixBuilder implements Runnable{
 
     private final boolean collectData;
 
+    private final boolean useMetaTft;
+
     private final long setBeginning;
 
     private final MainService mainService;
 
     private final CommunityDragonHandler communityDragonHandler;
+
+    private final MetaTftDataCollector metaTftDataCollector;
 
 
     @Autowired
@@ -41,10 +45,14 @@ public class MatrixBuilder implements Runnable{
                          @Value("${tftarena.buildGraph}") boolean buildGraph,
                          @Value("${tftarena.saveGames}") boolean saveGames,
                          @Value("${tftarena.collectData}") boolean collectData,
-                         @Value("${tftarena.setBeginning}") long setBeginning, MainService mainService, CommunityDragonHandler communityDragonHandler) {
+                         @Value("${metatft.use-metatft}") boolean useMetaTft,
+                         @Value("${tftarena.setBeginning}") long setBeginning,
+                         MainService mainService, CommunityDragonHandler communityDragonHandler, MetaTftDataCollector metaTftDataCollector) {
 
         this.gameRepository = gameRepository;
+        this.useMetaTft = useMetaTft;
         this.communityDragonHandler = communityDragonHandler;
+        this.metaTftDataCollector = metaTftDataCollector;
         this.apiKey=System.getenv("RIOT_KEY");
         this.buildGraph = buildGraph;
         this.saveGames = saveGames;
@@ -59,11 +67,9 @@ public class MatrixBuilder implements Runnable{
 
         Thread graphBuilderThread = new Thread(this);
 
-        graphBuilderThread.start();
-
         communityDragonHandler.readCommunityDragon();
 
-        MetaTftDataCollector.getMetaTftMatchData();
+        graphBuilderThread.start();
     }
 
     @Override
@@ -71,12 +77,21 @@ public class MatrixBuilder implements Runnable{
 
         if(buildGraph) {
             try{
-                List<Game> gatheredGames;
+                List<Game> gatheredGames = new ArrayList<>();
 
-                if(collectData)
-                    gatheredGames = collectData();
-                else
-                    gatheredGames = gameRepository.findAll();
+                if (useMetaTft) {
+                    MetaMatchData[] matchData = metaTftDataCollector.getMetaTftMatchData();
+
+                    for (MetaMatchData metaMatchData : matchData) {
+                        gatheredGames.add(mainService.convertMetaTftToRiotApiGame(metaMatchData));
+                    }
+                } else {
+                    if(collectData) {
+                        gatheredGames = collectData();
+                    } else {
+                        gatheredGames = gameRepository.findAll();
+                    }
+                }
 
                 buildMatrices(gatheredGames);
 
@@ -146,11 +161,6 @@ public class MatrixBuilder implements Runnable{
 
             Team[] teams = game.getInfo().getParticipants();
 
-            if(teams.length != 8){
-                System.out.println(game.getId());
-                continue;
-            }
-
             for (Team team : teams) {
                 if (!teamNames.contains(team.getTeamName())) {
                     teamNames.add(team.getTeamName());
@@ -158,7 +168,13 @@ public class MatrixBuilder implements Runnable{
 
                 for(Unit unit: team.getUnits()){
                     if(!unitNames.contains(unit.getCharacter_id()+"_"+unit.getTier())){
-                        unitNames.add(unit.getCharacter_id() + "_" + unit.getTier());
+                        for (int i = 1; i <= 3; i++) {
+                            unitNames.add(unit.getCharacter_id() + "_" + i);
+                        }
+                    }
+
+                    if (unit.getItems() == null) {
+                        continue;
                     }
 
                     for(int item: unit.getItems()){
@@ -194,8 +210,11 @@ public class MatrixBuilder implements Runnable{
                 for (Team enemyTeam : teams) {
                     int enemyTeamIndex = teamNames.indexOf(enemyTeam.getTeamName());
 
-
-                    strengthMatrix[teamIndex][enemyTeamIndex][0] += enemyTeam.getPlacement() - team.getPlacement();
+                    if (!enemyTeam.isMetaConverted()) {
+                        strengthMatrix[teamIndex][enemyTeamIndex][0] += enemyTeam.getPlacement() - team.getPlacement();
+                    } else {
+                        strengthMatrix[teamIndex][enemyTeamIndex][0] += enemyTeam.getHealthLost();
+                    }
                     strengthMatrix[teamIndex][enemyTeamIndex][1]++;
 
                 }
@@ -209,6 +228,10 @@ public class MatrixBuilder implements Runnable{
                     teamUnits.add(teamName);
 
                     //item matrix
+                    if (unit.getItems() == null) {
+                        continue;
+                    }
+
                     for(int item : unit.getItems()){
 
                         if(itemIndexes.contains(item)){
@@ -221,19 +244,25 @@ public class MatrixBuilder implements Runnable{
 
                     if(teamUnits.contains(unitNames.get(unitIndex))){
 
-                        teamUnitMatrix[teamIndex][unitIndex][0] += team.getPlacement();
+                        if (!team.isMetaConverted()) {
+                            teamUnitMatrix[teamIndex][unitIndex][0] += team.getPlacement();
+                        } else {
+                            teamUnitMatrix[teamIndex][unitIndex][0] += team.getHealthLost();
+                        }
                         teamUnitMatrix[teamIndex][unitIndex][2]++;
 
                         unitMatrix[unitIndex][0] += team.getPlacement();
                         unitMatrix[unitIndex][1]++;
                     }
                     else {
-                        teamUnitMatrix[teamIndex][unitIndex][1] += team.getPlacement();
+                        if (!team.isMetaConverted()) {
+                            teamUnitMatrix[teamIndex][unitIndex][1] += team.getPlacement();
+                        } else {
+                            teamUnitMatrix[teamIndex][unitIndex][1] += team.getHealthLost();
+                        }
                         teamUnitMatrix[teamIndex][unitIndex][3]++;
                     }
                 }
-
-
                 strengthMatrix[teamIndex][teamIndex][2]++;
             }
         }

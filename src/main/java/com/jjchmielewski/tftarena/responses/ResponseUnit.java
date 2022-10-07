@@ -39,7 +39,7 @@ public class ResponseUnit implements Comparable<ResponseUnit>{
         apiNameWithTier = metaUnit.getUnit()+"_"+metaUnit.getTier();
         items = new ArrayList<>();
 
-        for (int item : metaUnit.getItemIDs()) {
+        for (int item : metaUnit.getItem_ids()) {
             items.add(new ResponseItem(item));
         }
     }

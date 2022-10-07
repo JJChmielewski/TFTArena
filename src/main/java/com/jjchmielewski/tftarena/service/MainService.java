@@ -28,6 +28,8 @@ public class MainService {
 
     private final GameRepository gameRepository;
 
+    private final MetaTftDataCollector metaTftDataCollector;
+
     //team, enemy, 0 strength, 1 times played vs enemy, 2 total times played
     private double[][][] matrix;
 
@@ -63,8 +65,9 @@ public class MainService {
 
 
     @Autowired
-    public MainService(GameRepository gameRepository) {
+    public MainService(GameRepository gameRepository, MetaTftDataCollector metaTftDataCollector) {
         this.gameRepository = gameRepository;
+        this.metaTftDataCollector = metaTftDataCollector;
     }
 
     public ResponseTeam[] predictMatch(ResponseTeam[] teams){
@@ -95,6 +98,10 @@ public class MainService {
         for (ResponseTeam team : teams) {
             double unitStrength = 0;
             for (ResponseUnit unit : team.getUnits()) {
+                if (!unitNames.contains(unit.getApiNameWithTier())){
+                    continue;
+                }
+
                 unitStrength += unitMatrix[unitNames.indexOf(unit.getApiNameWithTier())][0] / unitMatrix[unitNames.indexOf(unit.getApiNameWithTier())][1];
             }
             team.setValue(unitStrength);
@@ -110,6 +117,14 @@ public class MainService {
             double itemStrength = 0;
             for (ResponseUnit unit : team.getUnits()) {
                 for (ResponseItem item : unit.getItems()) {
+                    if (!unitNames.contains(unit.getApiNameWithTier())) {
+                        continue;
+                    }
+
+                    if (!itemIDs.contains(item.getId())) {
+                        continue;
+                    }
+
                     itemStrength += itemMatrix[unitNames.indexOf(unit.getApiNameWithTier())][itemIDs.indexOf(item.getId())][0];
                 }
             }
@@ -305,8 +320,11 @@ public class MainService {
 
         int gamesNumber = games.size();
         double[][] method1 = new double[8][gamesNumber+1];
+        int invalidInMethod1 = 0;
         double[][] itemsOnly = new double[8][gamesNumber+1];
+        int invalidInItemsOnly = 0;
         double[][] unitsOnly = new double[8][gamesNumber+1];
+        int invalidInUnitsOnly = 0;
         int[] maxValues = new int[]{0,2,4,8,12,18,24,32};
 
         for(int g=0;g<gamesNumber;g++){
@@ -319,17 +337,20 @@ public class MainService {
             }
 
             ResponseTeam[] method1Array = predictMatch(teams);
+
+            method1Array = Arrays.copyOfRange(method1Array, 0, 2);
+
             boolean isMethod1Valid = false;
             for (int i = 0 ; i < method1Array.length; i++) {
                 method1[method1Array.length - 1][g] += Math.abs(method1Array[i].getPlacement() - i - 1);
                 for (ResponseTeam team : method1Array) {
-                    if (team.getValue() > 0){
+                    if (team.getTeamName().equals("No team")){
                         isMethod1Valid = true;
                     }
                 }
             }
             if (!isMethod1Valid) {
-                method1[method1Array.length - 1][g] = 0;
+                invalidInMethod1++;
             }
             method1[method1Array.length-1][method1[method1Array.length-1].length-1] += method1[method1Array.length-1][g];
             method1[method1Array.length-1][g] /= maxValues[method1Array.length-1];
@@ -347,6 +368,7 @@ public class MainService {
             }
             if (!isUnitMethodValid) {
                 unitsOnly[unitMethodArray.length-1][g] = 0;
+                invalidInUnitsOnly++;
             }
             unitsOnly[unitMethodArray.length-1][unitsOnly[unitMethodArray.length-1].length-1] += unitsOnly[unitMethodArray.length-1][g];
             unitsOnly[unitMethodArray.length-1][g] /= maxValues[unitMethodArray.length-1];
@@ -364,6 +386,7 @@ public class MainService {
             }
             if (!isItemMethodValid) {
                 itemsOnly[itemMethodArray.length - 1][g] = 0;
+                invalidInItemsOnly++;
             }
             itemsOnly[itemMethodArray.length-1][itemsOnly[itemMethodArray.length-1].length-1] += itemsOnly[itemMethodArray.length-1][g];
             itemsOnly[itemMethodArray.length-1][g] /= maxValues[itemMethodArray.length-1];
@@ -372,35 +395,30 @@ public class MainService {
         for(int i=1; i<8;i++){
             System.out.println(i+" Avg error: "+(method1[i][method1[i].length-1] /( maxValues[i] * (method1[i].length-1))));
         }
+        System.out.println("With number of invalid ones: "+invalidInMethod1);
 
         System.out.println("\n");
 
         for(int i=1; i<8;i++){
             System.out.println(i+" Avg unit error: "+(unitsOnly[i][unitsOnly[i].length-1] /( maxValues[i] * (unitsOnly[i].length-1))));
         }
+        System.out.println("With number of invalid ones: "+invalidInUnitsOnly);
 
         System.out.println("\n");
 
         for(int i=1; i<8;i++){
             System.out.println(i+" Avg item error: "+(itemsOnly[i][itemsOnly[i].length-1] /( maxValues[i] * (itemsOnly[i].length-1))));
         }
+        System.out.println("With number of invalid ones: "+invalidInItemsOnly);
     }
 
     public void checkAlgorithmWithMetaTftData() {
 
-        MetaMatchData[] metaMatchData = MetaTftDataCollector.getMetaTftMatchData();
+        MetaMatchData[] metaMatchData = metaTftDataCollector.getMetaTftMatchData("metaTft_test_data.csv");
         List<Game> games = new ArrayList<>();
 
         for (MetaMatchData matchData : metaMatchData) {
-            Team player, opponent;
-            player = convertMetaTftToRiotApi(matchData.getPlayer_units(), matchData.getPlayer_full_traits(), matchData.getWin() == 1 ? 1 : 2);
-            opponent = convertMetaTftToRiotApi(matchData.getOpponent_units(), matchData.getOpponent_full_traits(), matchData.getWin() == 0 ? 1 : 2);
-
-            GameInfo gameInfo = new GameInfo();
-            gameInfo.setParticipants(new Team[]{player, opponent});
-            Game game = new Game();
-            game.setInfo(gameInfo);
-            games.add(game);
+            games.add(convertMetaTftToRiotApiGame(matchData));
         }
 
         checkAlgorithm(games);
@@ -477,7 +495,7 @@ public class MainService {
         this.unitMatrix = unitMatrix;
     }
 
-    private Team convertMetaTftToRiotApi(MetaUnit[] playerUnits, String[] playerTraits, int placement) {
+    private Team convertMetaTftToRiotApiTeam(MetaUnit[] playerUnits, String[] playerTraits, double healthLost) {
 
         Map<String, Integer> newTeamTraits = new HashMap<>();
 
@@ -520,8 +538,22 @@ public class MainService {
         Team resultTeam = new Team();
         resultTeam.setUnits(riotUnits);
         resultTeam.setTraits(riotTraits.toArray(new Trait[0]));
-        resultTeam.setPlacement(placement);
+        resultTeam.setPlacement(healthLost >= 0 ? 1 : 2);
+        resultTeam.setHealthLost(healthLost);
+        resultTeam.setMetaConverted(true);
 
         return resultTeam;
+    }
+
+    public Game convertMetaTftToRiotApiGame(MetaMatchData matchData) {
+        Team player, opponent;
+        player = convertMetaTftToRiotApiTeam(matchData.getPlayer_units(), matchData.getPlayer_full_traits(), matchData.getPlayer_health_lost());
+        opponent = convertMetaTftToRiotApiTeam(matchData.getOpponent_units(), matchData.getOpponent_full_traits(), matchData.getOpponent_health_lost());
+
+        GameInfo gameInfo = new GameInfo();
+        gameInfo.setParticipants(new Team[]{player, opponent});
+        Game game = new Game();
+        game.setInfo(gameInfo);
+        return game;
     }
 }

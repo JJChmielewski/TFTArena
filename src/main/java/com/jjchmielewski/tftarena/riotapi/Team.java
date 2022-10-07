@@ -6,6 +6,7 @@ import com.jjchmielewski.tftarena.riotapi.unit.Unit;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Arrays;
@@ -25,6 +26,12 @@ public class Team {
 
     private Trait[] traits;
     private Unit[] units;
+
+    @Transient
+    private double healthLost = 0;
+
+    @Transient
+    private boolean isMetaConverted = false;
 
     public Team() {
     }
