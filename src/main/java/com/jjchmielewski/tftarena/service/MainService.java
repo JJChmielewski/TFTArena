@@ -98,10 +98,6 @@ public class MainService {
         for (ResponseTeam team : teams) {
             double unitStrength = 0;
             for (ResponseUnit unit : team.getUnits()) {
-                if (!unitNames.contains(unit.getApiNameWithTier())){
-                    continue;
-                }
-
                 unitStrength += unitMatrix[unitNames.indexOf(unit.getApiNameWithTier())][0] / unitMatrix[unitNames.indexOf(unit.getApiNameWithTier())][1];
             }
             team.setValue(unitStrength);
@@ -117,14 +113,6 @@ public class MainService {
             double itemStrength = 0;
             for (ResponseUnit unit : team.getUnits()) {
                 for (ResponseItem item : unit.getItems()) {
-                    if (!unitNames.contains(unit.getApiNameWithTier())) {
-                        continue;
-                    }
-
-                    if (!itemIDs.contains(item.getId())) {
-                        continue;
-                    }
-
                     itemStrength += itemMatrix[unitNames.indexOf(unit.getApiNameWithTier())][itemIDs.indexOf(item.getId())][0];
                 }
             }
@@ -320,11 +308,8 @@ public class MainService {
 
         int gamesNumber = games.size();
         double[][] method1 = new double[8][gamesNumber+1];
-        int invalidInMethod1 = 0;
         double[][] itemsOnly = new double[8][gamesNumber+1];
-        int invalidInItemsOnly = 0;
         double[][] unitsOnly = new double[8][gamesNumber+1];
-        int invalidInUnitsOnly = 0;
         int[] maxValues = new int[]{0,2,4,8,12,18,24,32};
 
         for(int g=0;g<gamesNumber;g++){
@@ -337,20 +322,17 @@ public class MainService {
             }
 
             ResponseTeam[] method1Array = predictMatch(teams);
-
-            method1Array = Arrays.copyOfRange(method1Array, 0, 2);
-
             boolean isMethod1Valid = false;
             for (int i = 0 ; i < method1Array.length; i++) {
                 method1[method1Array.length - 1][g] += Math.abs(method1Array[i].getPlacement() - i - 1);
                 for (ResponseTeam team : method1Array) {
-                    if (team.getTeamName().equals("No team")){
+                    if (team.getValue() > 0){
                         isMethod1Valid = true;
                     }
                 }
             }
             if (!isMethod1Valid) {
-                invalidInMethod1++;
+                method1[method1Array.length - 1][g] = 0;
             }
             method1[method1Array.length-1][method1[method1Array.length-1].length-1] += method1[method1Array.length-1][g];
             method1[method1Array.length-1][g] /= maxValues[method1Array.length-1];
@@ -368,7 +350,6 @@ public class MainService {
             }
             if (!isUnitMethodValid) {
                 unitsOnly[unitMethodArray.length-1][g] = 0;
-                invalidInUnitsOnly++;
             }
             unitsOnly[unitMethodArray.length-1][unitsOnly[unitMethodArray.length-1].length-1] += unitsOnly[unitMethodArray.length-1][g];
             unitsOnly[unitMethodArray.length-1][g] /= maxValues[unitMethodArray.length-1];
@@ -386,7 +367,6 @@ public class MainService {
             }
             if (!isItemMethodValid) {
                 itemsOnly[itemMethodArray.length - 1][g] = 0;
-                invalidInItemsOnly++;
             }
             itemsOnly[itemMethodArray.length-1][itemsOnly[itemMethodArray.length-1].length-1] += itemsOnly[itemMethodArray.length-1][g];
             itemsOnly[itemMethodArray.length-1][g] /= maxValues[itemMethodArray.length-1];
@@ -395,30 +375,35 @@ public class MainService {
         for(int i=1; i<8;i++){
             System.out.println(i+" Avg error: "+(method1[i][method1[i].length-1] /( maxValues[i] * (method1[i].length-1))));
         }
-        System.out.println("With number of invalid ones: "+invalidInMethod1);
 
         System.out.println("\n");
 
         for(int i=1; i<8;i++){
             System.out.println(i+" Avg unit error: "+(unitsOnly[i][unitsOnly[i].length-1] /( maxValues[i] * (unitsOnly[i].length-1))));
         }
-        System.out.println("With number of invalid ones: "+invalidInUnitsOnly);
 
         System.out.println("\n");
 
         for(int i=1; i<8;i++){
             System.out.println(i+" Avg item error: "+(itemsOnly[i][itemsOnly[i].length-1] /( maxValues[i] * (itemsOnly[i].length-1))));
         }
-        System.out.println("With number of invalid ones: "+invalidInItemsOnly);
     }
 
     public void checkAlgorithmWithMetaTftData() {
 
-        MetaMatchData[] metaMatchData = metaTftDataCollector.getMetaTftMatchData("metaTft_test_data.csv");
+        MetaMatchData[] metaMatchData = metaTftDataCollector.getMetaTftMatchData();
         List<Game> games = new ArrayList<>();
 
         for (MetaMatchData matchData : metaMatchData) {
-            games.add(convertMetaTftToRiotApiGame(matchData));
+            Team player, opponent;
+            player = convertMetaTftToRiotApiTeam(matchData.getPlayer_units(), matchData.getPlayer_full_traits(), matchData.getWin() == 1 ? 1 : 2);
+            opponent = convertMetaTftToRiotApiTeam(matchData.getOpponent_units(), matchData.getOpponent_full_traits(), matchData.getWin() == 0 ? 1 : 2);
+
+            GameInfo gameInfo = new GameInfo();
+            gameInfo.setParticipants(new Team[]{player, opponent});
+            Game game = new Game();
+            game.setInfo(gameInfo);
+            games.add(game);
         }
 
         checkAlgorithm(games);
@@ -540,10 +525,10 @@ public class MainService {
         resultTeam.setTraits(riotTraits.toArray(new Trait[0]));
         resultTeam.setPlacement(healthLost >= 0 ? 1 : 2);
         resultTeam.setHealthLost(healthLost);
-        resultTeam.setMetaConverted(true);
 
         return resultTeam;
     }
+
 
     public Game convertMetaTftToRiotApiGame(MetaMatchData matchData) {
         Team player, opponent;
