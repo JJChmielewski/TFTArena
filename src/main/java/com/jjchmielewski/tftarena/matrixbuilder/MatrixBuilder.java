@@ -2,17 +2,21 @@ package com.jjchmielewski.tftarena.matrixbuilder;
 
 import com.jjchmielewski.tftarena.communitydragon.CommunityDragonHandler;
 import com.jjchmielewski.tftarena.metatft.MetaMatchData;
-import com.jjchmielewski.tftarena.metatft.MetaTftDataCollector;
+import com.jjchmielewski.tftarena.repository.GameRepository;
 import com.jjchmielewski.tftarena.riotapi.Team;
 import com.jjchmielewski.tftarena.riotapi.entities.Game;
 import com.jjchmielewski.tftarena.riotapi.unit.Unit;
-import com.jjchmielewski.tftarena.repository.GameRepository;
 import com.jjchmielewski.tftarena.service.MainService;
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvValidationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -134,7 +138,7 @@ public class MatrixBuilder implements Runnable{
         List<Integer> itemIndexes = new ArrayList<>();
         double[][][] strengthMatrix;
         double[][][] teamUnitMatrix;
-        int[][][] itemMatrix;
+        double[][][] itemMatrix;
         double[][] unitMatrix;
 
         System.out.println("Starting");
@@ -175,7 +179,7 @@ public class MatrixBuilder implements Runnable{
         teamUnitMatrix = new double[teamNames.size()][unitNames.size()][4];
 
         //times played
-        itemMatrix = new int[unitNames.size()][itemIndexes.size()][1];
+        itemMatrix = new double[unitNames.size()][itemIndexes.size()][1];
 
         //sum of place, times played
         unitMatrix = new double[unitNames.size()][2];
@@ -249,5 +253,154 @@ public class MatrixBuilder implements Runnable{
         mainService.setMatrixData(strengthMatrix, teamNames,teamUnitMatrix,itemMatrix,unitNames,itemIndexes,games.size(), unitMatrix);
 
         System.out.println("Matrices built");
+    }
+
+    public void buildMatrices(String datasource) {
+
+        //define matrices
+        double[][][] teamMatrix;
+        double[][][] unitInTeamMatrix;
+        double[][][] itemOnUnitMatrix;
+        double[][] traitMatrix;
+        double[][] unitMatrix;
+        double[][] itemMatrix;
+        double[][] augmentMatrix;
+
+        List<String> teamNames, unitNames, traitNames, augmentNames;
+        teamNames = new ArrayList<>();
+        unitNames = new ArrayList<>();
+        augmentNames = new ArrayList<>();
+        traitNames = new ArrayList<>();
+        List<Integer> itemIndexes = new ArrayList<>();
+
+        //build matrices
+        try {
+            CSVReader csvReader = new CSVReader(new FileReader(datasource));
+            String[] nextLine;
+            while ((nextLine = csvReader.readNext()) != null) {
+                MetaMatchData metaMatchData = new MetaMatchData(nextLine);
+
+                Game game = mainService.convertMetaTftToRiotApiGame(metaMatchData);
+
+                Team[] teams = game.getInfo().getParticipants();
+
+                for (Team team : teams) {
+                    if (!teamNames.contains(team.getTeamName())) {
+                        teamNames.add(team.getTeamName());
+                    }
+
+                    if (team.getUnits() == null) {
+                        continue;
+                    }
+
+                    for (Unit unit : team.getUnits()) {
+                        if (!unitNames.contains(unit.getFullUnitName())){
+                            unitNames.add(unit.getFullUnitName());
+                        }
+
+                        if (unit.getItems() == null) {
+                            continue;
+                        }
+
+                        for (Integer item : unit.getItems()) {
+                            if (!itemIndexes.contains(item)) {
+                                itemIndexes.add(item);
+                            }
+                        }
+                    }
+                }
+
+            }
+
+        } catch (FileNotFoundException fileNotFoundException) {
+            fileNotFoundException.printStackTrace();
+        } catch (CsvValidationException csvValidationException) {
+            csvValidationException.printStackTrace();
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+        }
+
+        //strength, times vs this team, times played over all (not 0 on the diagonal)
+        teamMatrix =  new double[teamNames.size()][teamNames.size()][3];
+
+        //strength, times played
+        unitInTeamMatrix = new double[teamNames.size()][unitNames.size()][2];
+
+        //strength, times played
+        itemOnUnitMatrix = new double[unitNames.size()][itemIndexes.size()][2];
+
+        //strength, times played
+        unitMatrix = new double[unitNames.size()][2];
+
+        //strength, times played
+        itemMatrix = new double[itemIndexes.size()][2];
+
+
+        //fill matrices with data
+        try {
+            CSVReader csvReader = new CSVReader(new FileReader(datasource));
+            String[] nextLine;
+            while ((nextLine = csvReader.readNext()) != null) {
+                MetaMatchData metaMatchData = new MetaMatchData(nextLine);
+
+                Game game = mainService.convertMetaTftToRiotApiGame(metaMatchData);
+
+                Team[] teams = game.getInfo().getParticipants();
+                double[] teamStrength = new double[2];
+                teamStrength[0] = teams[0].getHealthLost() > 0 ? 1/teams[0].getHealthLost() : teams[1].getHealthLost();
+                teamStrength[1] = teams[1].getHealthLost() > 0 ? 1/teams[1].getHealthLost() : teams[0].getHealthLost();
+                double[] team1Data, team2Data;
+                team1Data = teamMatrix[teamNames.indexOf(teams[0].getTeamName())][teamNames.indexOf(teams[1].getTeamName())];
+                team2Data = teamMatrix[teamNames.indexOf(teams[1].getTeamName())][teamNames.indexOf(teams[0].getTeamName())];
+
+                team1Data[0] += teamStrength[0];
+                team1Data[1]++;
+
+                team2Data[0] += teamStrength[1];
+                team2Data[1]++;
+
+                teamMatrix[teamNames.indexOf(teams[0].getTeamName())][teamNames.indexOf(teams[0].getTeamName())][2]++;
+                teamMatrix[teamNames.indexOf(teams[1].getTeamName())][teamNames.indexOf(teams[1].getTeamName())][2]++;
+
+                for (int i = 0; i < teams.length; i++) {
+                    for (Unit unit : teams[i].getUnits()) {
+
+                        double[] unitInTeamData = unitInTeamMatrix[teamNames.indexOf(teams[i].getTeamName())][unitNames.indexOf(unit.getFullUnitName())];
+                        unitInTeamData[0] += teamStrength[i] * unit.getItemComponentsCount();
+                        unitInTeamData[1]++;
+
+                        double[] unitData = unitMatrix[unitNames.indexOf(unit.getFullUnitName())];
+                        unitData[0] += teamStrength[i];
+                        unitData[1]++;
+
+                        if (unit.getItems() == null) {
+                            continue;
+                        }
+
+                        for (Integer item : unit.getItems()) {
+                            double[] itemOnUnitData = itemOnUnitMatrix[unitNames.indexOf(unit.getFullUnitName())][itemIndexes.indexOf(item)];
+                            itemOnUnitData[0] += teamStrength[i];
+                            itemOnUnitData[1]++;
+
+                            double[] itemData = itemMatrix[itemIndexes.indexOf(item)];
+                            itemData[0] += teamStrength[i];
+                            itemData[1]++;
+                        }
+
+                    }
+                }
+
+            }
+
+        } catch (FileNotFoundException fileNotFoundException) {
+            fileNotFoundException.printStackTrace();
+        } catch (CsvValidationException csvValidationException) {
+            csvValidationException.printStackTrace();
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+        }
+
+        mainService.setMatrixData(teamMatrix, teamNames, unitInTeamMatrix, itemOnUnitMatrix, unitNames, itemIndexes, unitMatrix, itemMatrix);
+
     }
 }

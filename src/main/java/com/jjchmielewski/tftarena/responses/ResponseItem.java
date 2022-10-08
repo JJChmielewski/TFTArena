@@ -10,9 +10,9 @@ public class ResponseItem implements Comparable<ResponseItem>{
     private String name;
     private int id;
     private int[] from;
-    private int timesPlayed;
+    private double timesPlayed;
 
-    public ResponseItem(String name, int id, int[] from, int timesPlayed) {
+    public ResponseItem(String name, int id, int[] from, double timesPlayed) {
         this.name = name;
         this.id = id;
         this.from = from;
@@ -25,6 +25,6 @@ public class ResponseItem implements Comparable<ResponseItem>{
 
     @Override
     public int compareTo(ResponseItem o) {
-        return Integer.compare(this.timesPlayed, o.getTimesPlayed());
+        return Double.compare(this.timesPlayed, o.getTimesPlayed());
     }
 }

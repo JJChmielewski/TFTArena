@@ -48,6 +48,28 @@ public class Unit implements Comparable<Unit>{
         }
     }
 
+    public int getItemComponentsCount() {
+        int componentCount = 0;
+
+        if (items != null) {
+            for (Integer item : items) {
+                if (item < 1 || item > 99) {
+                    continue;
+                }
+                componentCount++;
+
+                if (item > 9) {
+                    componentCount++;
+                }
+            }
+        }
+        return componentCount;
+    }
+
+    public String getFullUnitName() {
+        return this.character_id+"_"+this.tier;
+    }
+
     @Override
     public String toString() {
         return "Unit{" +

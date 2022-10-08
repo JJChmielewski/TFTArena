@@ -37,10 +37,13 @@ public class MainService {
     private double[][][] teamUnitMatrix;
 
     //unit, item, 0 times played, 1 sum of places
-    private int[][][] itemMatrix;
+    private double[][][] itemOnUnitMatrix;
 
     //sum of places, times played
     private double[][] unitMatrix;
+
+    //strength, times played
+    private double[][] itemMatrix;
 
     //indexes of matrices
     private List<String> teamNames;
@@ -113,7 +116,7 @@ public class MainService {
             double itemStrength = 0;
             for (ResponseUnit unit : team.getUnits()) {
                 for (ResponseItem item : unit.getItems()) {
-                    itemStrength += itemMatrix[unitNames.indexOf(unit.getApiNameWithTier())][itemIDs.indexOf(item.getId())][0];
+                    itemStrength += itemOnUnitMatrix[unitNames.indexOf(unit.getApiNameWithTier())][itemIDs.indexOf(item.getId())][0];
                 }
             }
             team.setValue(itemStrength);
@@ -283,14 +286,14 @@ public class MainService {
 
         List<ResponseItem> items = new ArrayList<>();
 
-        for(int i=0;i<this.itemMatrix[unitIndex].length;i++){
+        for(int i = 0; i<this.itemOnUnitMatrix[unitIndex].length; i++){
 
             CDItem temp = this.items.get(itemIDs.get(i));
 
             if(temp == null)
                 continue;
 
-            items.add(new ResponseItem(temp.name(), temp.id(),temp.from(),this.itemMatrix[unitIndex][i][0]));
+            items.add(new ResponseItem(temp.name(), temp.id(),temp.from(), this.itemOnUnitMatrix[unitIndex][i][0]));
 
         }
 
@@ -466,18 +469,33 @@ public class MainService {
     }
 
     public void setMatrixData(double[][][] matrix, List<String> teamNames,
-                              double[][][] teamUnitMatrix, int[][][] itemMatrix,
+                              double[][][] teamUnitMatrix, double[][][] itemMatrix,
                               List<String> unitNames, List<Integer> itemIndexes,
                               int totalGames, double[][] unitMatrix){
 
         this.matrix = matrix;
         this.teamNames = teamNames;
         this.teamUnitMatrix = teamUnitMatrix;
-        this.itemMatrix = itemMatrix;
+        this.itemOnUnitMatrix = itemMatrix;
         this.unitNames = unitNames;
         this.itemIDs = itemIndexes;
         this.totalGames= totalGames;
         this.unitMatrix = unitMatrix;
+    }
+
+    public void setMatrixData(double[][][] teamMatrix, List<String> teamNames,
+                              double[][][] unitInTeamMatrix, double[][][] itemOnUnitMatrix,
+                              List<String> unitNames, List<Integer> itemIndexes,
+                              double[][] unitMatrix, double[][] itemMatrix) {
+        this.matrix = teamMatrix;
+        this.teamNames = teamNames;
+        this.teamUnitMatrix = unitInTeamMatrix;
+        this.itemOnUnitMatrix = itemOnUnitMatrix;
+        this.unitNames = unitNames;
+        this.itemIDs = itemIndexes;
+        this.unitMatrix = unitMatrix;
+        this.itemMatrix = itemMatrix;
+
     }
 
     private Team convertMetaTftToRiotApiTeam(MetaUnit[] playerUnits, String[] playerTraits, double healthLost) {
