@@ -31,6 +31,12 @@ public class MetaMatchData {
             return;
         }
 
+        for (int i = 0; i < csvData.length; i++) {
+            csvData[i] = csvData[i].replace('\'', '\"');
+        }
+
+
+
         try {
             this.opponent_augments = objectMapper.readValue(csvData[0], String[].class);
             this.player_augments = objectMapper.readValue(csvData[1], String[].class);

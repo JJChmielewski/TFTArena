@@ -7,7 +7,10 @@ import com.jjchmielewski.tftarena.riotapi.Team;
 import com.jjchmielewski.tftarena.riotapi.entities.Game;
 import com.jjchmielewski.tftarena.riotapi.unit.Unit;
 import com.jjchmielewski.tftarena.service.MainService;
+import com.opencsv.CSVParser;
+import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
+import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvValidationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,6 +36,10 @@ public class MatrixBuilder implements Runnable{
 
     private final boolean collectData;
 
+    private final boolean useMetaTftData;
+
+    private final String metaTftDatasource;
+
     private final long setBeginning;
 
     private final MainService mainService;
@@ -45,9 +52,13 @@ public class MatrixBuilder implements Runnable{
                          @Value("${tftarena.buildGraph}") boolean buildGraph,
                          @Value("${tftarena.saveGames}") boolean saveGames,
                          @Value("${tftarena.collectData}") boolean collectData,
+                         @Value("${metatft.use-metatft}") boolean useMetaTftData,
+                         @Value("${metatft.datasource}") String datasource,
                          @Value("${tftarena.setBeginning}") long setBeginning, MainService mainService, CommunityDragonHandler communityDragonHandler) {
 
         this.gameRepository = gameRepository;
+        this.useMetaTftData = useMetaTftData;
+        metaTftDatasource = datasource;
         this.communityDragonHandler = communityDragonHandler;
         this.apiKey=System.getenv("RIOT_KEY");
         this.buildGraph = buildGraph;
@@ -72,18 +83,23 @@ public class MatrixBuilder implements Runnable{
     public void run() {
 
         if(buildGraph) {
-            try{
-                List<Game> gatheredGames;
+            if (useMetaTftData) {
+                communityDragonHandler.readCommunityDragon();
+                buildMatrices(metaTftDatasource);
+            } else {
+                try{
+                    List<Game> gatheredGames;
 
-                if(collectData)
-                    gatheredGames = collectData();
-                else
-                    gatheredGames = gameRepository.findAll();
+                    if(collectData)
+                        gatheredGames = collectData();
+                    else
+                        gatheredGames = gameRepository.findAll();
 
-                buildMatrices(gatheredGames);
+                    buildMatrices(gatheredGames);
 
-            }catch (Exception e){
-                e.printStackTrace();
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
             }
         }
 
@@ -275,7 +291,8 @@ public class MatrixBuilder implements Runnable{
 
         //build matrices
         try {
-            CSVReader csvReader = new CSVReader(new FileReader(datasource));
+            CSVParser csvParser = new CSVParserBuilder().withSeparator(';').withIgnoreQuotations(true).build();
+            CSVReader csvReader = new CSVReaderBuilder(new FileReader(datasource)).withSkipLines(1).withCSVParser(csvParser).build();
             String[] nextLine;
             while ((nextLine = csvReader.readNext()) != null) {
                 MetaMatchData metaMatchData = new MetaMatchData(nextLine);
@@ -338,7 +355,8 @@ public class MatrixBuilder implements Runnable{
 
         //fill matrices with data
         try {
-            CSVReader csvReader = new CSVReader(new FileReader(datasource));
+            CSVParser csvParser = new CSVParserBuilder().withSeparator(';').withIgnoreQuotations(true).build();
+            CSVReader csvReader = new CSVReaderBuilder(new FileReader(datasource)).withSkipLines(1).withCSVParser(csvParser).build();
             String[] nextLine;
             while ((nextLine = csvReader.readNext()) != null) {
                 MetaMatchData metaMatchData = new MetaMatchData(nextLine);
@@ -347,8 +365,8 @@ public class MatrixBuilder implements Runnable{
 
                 Team[] teams = game.getInfo().getParticipants();
                 double[] teamStrength = new double[2];
-                teamStrength[0] = teams[0].getHealthLost() > 0 ? 1/teams[0].getHealthLost() : teams[1].getHealthLost();
-                teamStrength[1] = teams[1].getHealthLost() > 0 ? 1/teams[1].getHealthLost() : teams[0].getHealthLost();
+                teamStrength[0] = teams[0].getHealthLost() < 0 ? teams[0].getHealthLost() : -1*teams[1].getHealthLost();
+                teamStrength[1] = teams[1].getHealthLost() < 0 ? teams[1].getHealthLost() : -1*teams[0].getHealthLost();
                 double[] team1Data, team2Data;
                 team1Data = teamMatrix[teamNames.indexOf(teams[0].getTeamName())][teamNames.indexOf(teams[1].getTeamName())];
                 team2Data = teamMatrix[teamNames.indexOf(teams[1].getTeamName())][teamNames.indexOf(teams[0].getTeamName())];
@@ -363,6 +381,9 @@ public class MatrixBuilder implements Runnable{
                 teamMatrix[teamNames.indexOf(teams[1].getTeamName())][teamNames.indexOf(teams[1].getTeamName())][2]++;
 
                 for (int i = 0; i < teams.length; i++) {
+                    if (teams[i].getUnits() == null) {
+                        continue;
+                    }
                     for (Unit unit : teams[i].getUnits()) {
 
                         double[] unitInTeamData = unitInTeamMatrix[teamNames.indexOf(teams[i].getTeamName())][unitNames.indexOf(unit.getFullUnitName())];
@@ -399,8 +420,8 @@ public class MatrixBuilder implements Runnable{
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }
+        System.out.println("Matrices built");
 
         mainService.setMatrixData(teamMatrix, teamNames, unitInTeamMatrix, itemOnUnitMatrix, unitNames, itemIndexes, unitMatrix, itemMatrix);
-
     }
 }

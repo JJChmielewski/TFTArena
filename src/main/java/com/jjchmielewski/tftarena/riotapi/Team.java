@@ -52,7 +52,7 @@ public class Team {
 
         String teamName ="";
         if(this.units.length > 5 && this.traits.length > 0){
-            teamName += this.traits[0].getName() + "_" + this.traits[0].getStyle() +"_"+ this.units[0].getCharacter_id()+"_"+this.units[0].getTier();
+            teamName += this.traits[0].getName().split("_")[1] + "_" + this.traits[0].getStyle() +"_"+ this.units[0].getCharacter_id().split("_")[1] +"_"+this.units[0].getTier();
         }
         else{
             teamName = "No team";

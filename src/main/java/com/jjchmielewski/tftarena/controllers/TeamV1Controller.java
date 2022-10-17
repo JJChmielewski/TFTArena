@@ -24,9 +24,11 @@ public class TeamV1Controller {
     @GetMapping("/check")
     public void checkAlgorithm(){
 
-        this.mainService.checkAlgorithm();
+        //this.mainService.checkAlgorithm();
 
-        this.mainService.checkAlgorithmWithMetaTftData();
+        //this.mainService.checkAlgorithmWithMetaTftData();
+
+        mainService.checkMetaTrainedAlgorithm();
     }
 
     @GetMapping("/team/get-teams")

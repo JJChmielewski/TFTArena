@@ -96,11 +96,38 @@ public class MainService {
         return teams;
     }
 
+    public ResponseTeam[] predictMatchBasedOnUnitsInTeam(ResponseTeam[] teams) {
+        for (ResponseTeam team : teams) {
+            double teamStrength = 0;
+            team.setValue(0);
+            if (team.getTeamName().equals("No team") || !teamNames.contains(team.getTeamName())) {
+                continue;
+            }
+
+            for (ResponseUnit unit : team.getUnits()) {
+                if (!unitNames.contains(unit.getApiNameWithTier())) {
+                    continue;
+                }
+
+                teamStrength += teamUnitMatrix[teamNames.indexOf(team.getTeamName())][unitNames.indexOf(unit.getApiNameWithTier())][0];
+            }
+
+            team.setValue(teamStrength);
+        }
+
+        Arrays.sort(teams, Collections.reverseOrder());
+
+        return teams;
+    }
+
     public ResponseTeam[] predictMatchBasedOnUnits(ResponseTeam[] teams) {
 
         for (ResponseTeam team : teams) {
             double unitStrength = 0;
             for (ResponseUnit unit : team.getUnits()) {
+                if (!unitNames.contains(unit.getApiNameWithTier())) {
+                    continue;
+                }
                 unitStrength += unitMatrix[unitNames.indexOf(unit.getApiNameWithTier())][0] / unitMatrix[unitNames.indexOf(unit.getApiNameWithTier())][1];
             }
             team.setValue(unitStrength);
@@ -116,6 +143,9 @@ public class MainService {
             double itemStrength = 0;
             for (ResponseUnit unit : team.getUnits()) {
                 for (ResponseItem item : unit.getItems()) {
+                    if (!itemIDs.contains(item.getId())) {
+                        continue;
+                    }
                     itemStrength += itemOnUnitMatrix[unitNames.indexOf(unit.getApiNameWithTier())][itemIDs.indexOf(item.getId())][0];
                 }
             }
@@ -329,7 +359,7 @@ public class MainService {
             for (int i = 0 ; i < method1Array.length; i++) {
                 method1[method1Array.length - 1][g] += Math.abs(method1Array[i].getPlacement() - i - 1);
                 for (ResponseTeam team : method1Array) {
-                    if (team.getValue() > 0){
+                    if (team.getValue() != 0){
                         isMethod1Valid = true;
                     }
                 }
@@ -346,7 +376,7 @@ public class MainService {
             for (int i = 0; i < unitMethodArray.length; i++) {
                 unitsOnly[unitMethodArray.length-1][g] += Math.abs(unitMethodArray[i].getPlacement() - i - 1);
                 for (ResponseTeam team : unitMethodArray) {
-                    if (team.getValue() > 0) {
+                    if (team.getValue() != 0) {
                         isUnitMethodValid = true;
                     }
                 }
@@ -363,7 +393,7 @@ public class MainService {
             for (int i = 0; i < itemMethodArray.length; i++) {
                 itemsOnly[itemMethodArray.length - 1][g] += Math.abs(itemMethodArray[i].getPlacement() - i - 1);
                 for (ResponseTeam team : itemMethodArray) {
-                    if (team.getValue() > 0) {
+                    if (team.getValue() != 0) {
                         isItemMethodValid = true;
                     }
                 }
@@ -410,6 +440,72 @@ public class MainService {
         }
 
         checkAlgorithm(games);
+    }
+
+    public void checkMetaTrainedAlgorithm() {
+        checkMetaTrainedAlgorithm(gameRepository.findAll());
+    }
+    public void checkMetaTrainedAlgorithm(List<Game> games) {
+
+        double teamMethodSum = 0, teamMethodWorked = 0;
+        double unitInTeamMethodSum = 0, unitInTeamMethodWorked = 0;
+        double unitMethodSum = 0;
+        double itemMethodSum = 0;
+
+        for (int game = 0; game < games.size(); game ++) {
+
+            ResponseTeam[] bestTwoTeams = new ResponseTeam[2];
+
+            for (Team team : games.get(game).getInfo().getParticipants()) {
+                if (team.getPlacement() == 1) {
+                    bestTwoTeams[0] = new ResponseTeam(team);
+                }
+                if (team.getPlacement() == 2) {
+                    bestTwoTeams[1] = new ResponseTeam(team);
+                }
+            }
+
+            if (bestTwoTeams[0] == null || bestTwoTeams[1] == null) {
+                continue;
+            }
+
+            bestTwoTeams = predictMatch(bestTwoTeams);
+
+            for (int team = 0; team < bestTwoTeams.length; team++) {
+
+
+                teamMethodSum += Math.abs(team + 1 - bestTwoTeams[team].getPlacement());
+                teamMethodWorked++;
+            }
+
+            bestTwoTeams = predictMatchBasedOnUnitsInTeam(bestTwoTeams);
+
+            for (int team = 0; team < bestTwoTeams.length; team ++) {
+                if (Arrays.stream(bestTwoTeams).anyMatch(temp -> temp.getTeamName().equals("No team") || !teamNames.contains(temp.getTeamName()))) {
+                    break;
+                }
+
+                unitInTeamMethodSum += Math.abs(team + 1 - bestTwoTeams[team].getPlacement());
+                unitInTeamMethodWorked++;
+            }
+
+            bestTwoTeams = predictMatchBasedOnItems(bestTwoTeams);
+
+            for (int team = 0; team < bestTwoTeams.length; team ++) {
+                itemMethodSum += Math.abs(team + 1 - bestTwoTeams[team].getPlacement());
+            }
+
+            bestTwoTeams = predictMatchBasedOnUnits(bestTwoTeams);
+
+            for (int team = 0; team < bestTwoTeams.length; team++) {
+                unitMethodSum += Math.abs(team + 1 - bestTwoTeams[team].getPlacement());
+            }
+        }
+
+        System.out.println("Team method avg error: " + teamMethodSum/teamMethodWorked + " with teams detected: " + teamMethodWorked/(games.size() * 2));
+        System.out.println("Unit in team method avg error: " + unitInTeamMethodSum/unitInTeamMethodWorked + " with teams detected: " + unitInTeamMethodWorked/(games.size() * 2));
+        System.out.println("Unit method avg error: " + itemMethodSum/(games.size()*2));
+        System.out.println("Item method avg error: " + unitMethodSum/(games.size()*2));
     }
 
     private int[] getTeamsIndexes(String[] teams){
@@ -501,6 +597,10 @@ public class MainService {
     private Team convertMetaTftToRiotApiTeam(MetaUnit[] playerUnits, String[] playerTraits, double healthLost) {
 
         Map<String, Integer> newTeamTraits = new HashMap<>();
+
+        if (playerTraits == null || playerTraits == null) {
+            return new Team();
+        }
 
         for (MetaUnit unit : playerUnits) {
             CDUnit cdUnit = units.get(unit.getUnit());
