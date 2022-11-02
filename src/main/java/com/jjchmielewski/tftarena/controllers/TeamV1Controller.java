@@ -26,9 +26,11 @@ public class TeamV1Controller {
 
         //this.mainService.checkAlgorithm();
 
-        //this.mainService.checkAlgorithmWithMetaTftData();
+        //mainService.checkAlgorithmWithMetaTftData();
 
-        mainService.checkMetaTrainedAlgorithm();
+        //mainService.checkMetaTrainedAlgorithm();
+
+        mainService.checkMetaTrainedAlgorithm("D:/MetaTFT/test_data_extracted.csv");
     }
 
     @GetMapping("/team/get-teams")

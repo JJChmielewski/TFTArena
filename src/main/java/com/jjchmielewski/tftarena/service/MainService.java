@@ -16,10 +16,18 @@ import com.jjchmielewski.tftarena.riotapi.Team;
 import com.jjchmielewski.tftarena.riotapi.entities.Game;
 import com.jjchmielewski.tftarena.riotapi.unit.Trait;
 import com.jjchmielewski.tftarena.riotapi.unit.Unit;
+import com.opencsv.CSVParser;
+import com.opencsv.CSVParserBuilder;
+import com.opencsv.CSVReader;
+import com.opencsv.CSVReaderBuilder;
+import com.opencsv.exceptions.CsvValidationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.*;
 
 @Service
@@ -63,6 +71,10 @@ public class MainService {
     //key id
     private Map<Integer, CDItem> items;
 
+    private double teamWeight = 1;
+    private double unitWeight = 0.5;
+    private double itemWeight = 0.5;
+
     @Value("${tftarena.current-set}")
     private int currentSet;
 
@@ -73,7 +85,54 @@ public class MainService {
         this.metaTftDataCollector = metaTftDataCollector;
     }
 
-    public ResponseTeam[] predictMatch(ResponseTeam[] teams){
+    public ResponseTeam[] predictMatch(ResponseTeam[] teams, double teamWeight, double unitWeight, double itemWeight) {
+        Map<ResponseTeam, Integer> indexMap = new HashMap<>();
+        double[] teamsStrength = new double[teams.length];
+        double[] unitStrength = new double[teams.length];
+        double[] itemStrength = new double[teams.length];
+        int items = 0;
+        int units = 0;
+
+        int index = 0;
+        for (ResponseTeam team : teams) {
+            indexMap.put(team, index);
+            index++;
+
+            units = team.getUnits().size();
+
+            for (ResponseUnit unit : team.getUnits()) {
+                if (unit.getItems() != null) {
+                    items += unit.getItems().size();
+                }
+            }
+        }
+
+        ResponseTeam[] teamsArray = predictMatchBasedOnTeams(Arrays.copyOf(teams,teams.length));
+        for (ResponseTeam team : teamsArray) {
+            teamsStrength[indexMap.get(team)] = team.getValue();
+        }
+
+        ResponseTeam[] unitsArray = predictMatchBasedOnUnits(Arrays.copyOf(teams,teams.length));
+        for (ResponseTeam team : unitsArray) {
+            unitStrength[indexMap.get(team)] = team.getValue();
+        }
+        ResponseTeam[] itemsArray = predictMatchBasedOnItems(Arrays.copyOf(teams,teams.length));
+        for (ResponseTeam team : itemsArray) {
+            itemStrength[indexMap.get(team)] = team.getValue();
+        }
+
+
+
+        for (int i = 0; i < teams.length; i++){
+            teams[i].setValue(teamsStrength[i] * teamWeight + (itemWeight * itemStrength[i])/items  + (unitStrength[i] * unitWeight)/units);
+        }
+
+        Arrays.sort(teams, Collections.reverseOrder());
+
+        return teams;
+    }
+
+    public ResponseTeam[] predictMatchBasedOnTeams(ResponseTeam[] teams){
 
         String[] teamNames = new String[teams.length];
         for (int i = 0; i < teams.length; i++) {
@@ -136,6 +195,35 @@ public class MainService {
         Arrays.sort(teams, Collections.reverseOrder());
 
         return teams;
+    }
+
+    public ResponseTeam[] predictMatchBasedOnItemsOnUnits(ResponseTeam[] teams) {
+
+        for (ResponseTeam team : teams) {
+            double strength = 0;
+
+            if (team.getUnits() != null) {
+                for (ResponseUnit unit : team.getUnits()) {
+                    double unitStrength = unitMatrix[unitNames.indexOf(unit.getApiNameWithTier())][0];
+
+                    if (unit.getItems() != null) {
+                        for (ResponseItem item : unit.getItems()) {
+                            if (!itemIDs.contains(item.getId())) {
+                                continue;
+                            }
+                            unitStrength *= itemOnUnitMatrix[unitNames.indexOf(unit.getApiNameWithTier())][itemIDs.indexOf(item.getId())][0];
+                        }
+                    }
+                    strength += unitStrength;
+                }
+                team.setValue(strength);
+            }
+        }
+
+        Arrays.sort(teams, Collections.reverseOrder());
+
+        return teams;
+
     }
 
     public ResponseTeam[] predictMatchBasedOnItems(ResponseTeam[] teams) {
@@ -339,10 +427,11 @@ public class MainService {
 
     public void checkAlgorithm(List<Game> games){
 
-        int gamesNumber = games.size();
-        double[][] method1 = new double[8][gamesNumber+1];
-        double[][] itemsOnly = new double[8][gamesNumber+1];
-        double[][] unitsOnly = new double[8][gamesNumber+1];
+        double gamesNumber = games.size();
+        double[][] method1 = new double[8][games.size()+1];
+        double method1Worked = 0;
+        double[][] itemsOnly = new double[8][games.size()+1];
+        double[][] unitsOnly = new double[8][games.size()+1];
         int[] maxValues = new int[]{0,2,4,8,12,18,24,32};
 
         for(int g=0;g<gamesNumber;g++){
@@ -354,7 +443,7 @@ public class MainService {
                 teams[i] = new ResponseTeam(teamComps[i]);
             }
 
-            ResponseTeam[] method1Array = predictMatch(teams);
+            ResponseTeam[] method1Array = predictMatchBasedOnTeams(teams);
             boolean isMethod1Valid = false;
             for (int i = 0 ; i < method1Array.length; i++) {
                 method1[method1Array.length - 1][g] += Math.abs(method1Array[i].getPlacement() - i - 1);
@@ -366,6 +455,8 @@ public class MainService {
             }
             if (!isMethod1Valid) {
                 method1[method1Array.length - 1][g] = 0;
+            } else {
+                method1Worked++;
             }
             method1[method1Array.length-1][method1[method1Array.length-1].length-1] += method1[method1Array.length-1][g];
             method1[method1Array.length-1][g] /= maxValues[method1Array.length-1];
@@ -406,7 +497,7 @@ public class MainService {
         }
 
         for(int i=1; i<8;i++){
-            System.out.println(i+" Avg error: "+(method1[i][method1[i].length-1] /( maxValues[i] * (method1[i].length-1))));
+            System.out.println(i+" Avg error: "+(method1[i][method1[i].length-1] /( maxValues[i] * method1Worked)) + " with valid: " + method1Worked/gamesNumber);
         }
 
         System.out.println("\n");
@@ -424,88 +515,147 @@ public class MainService {
 
     public void checkAlgorithmWithMetaTftData() {
 
-        MetaMatchData[] metaMatchData = metaTftDataCollector.getMetaTftMatchData();
-        List<Game> games = new ArrayList<>();
+        List<Game> metaMatchData = new ArrayList<>();
 
-        for (MetaMatchData matchData : metaMatchData) {
-            Team player, opponent;
-            player = convertMetaTftToRiotApiTeam(matchData.getPlayer_units(), matchData.getPlayer_full_traits(), matchData.getWin() == 1 ? 1 : 2);
-            opponent = convertMetaTftToRiotApiTeam(matchData.getOpponent_units(), matchData.getOpponent_full_traits(), matchData.getWin() == 0 ? 1 : 2);
+        try {
+            CSVParser csvParser = new CSVParserBuilder().withSeparator(';').withIgnoreQuotations(true).build();
+            CSVReader csvReader = new CSVReaderBuilder(new FileReader("D:/MetaTFT/test_data_extracted.csv")).withSkipLines(1).withCSVParser(csvParser).build();
+            String[] nextLine;
 
-            GameInfo gameInfo = new GameInfo();
-            gameInfo.setParticipants(new Team[]{player, opponent});
-            Game game = new Game();
-            game.setInfo(gameInfo);
-            games.add(game);
+            while ((nextLine = csvReader.readNext()) != null) {
+                MetaMatchData temp = new MetaMatchData(nextLine);
+                metaMatchData.add(convertMetaTftToRiotApiGame(temp));
+            }
+
+        } catch (IOException | CsvValidationException e) {
+            e.printStackTrace();
         }
 
-        checkAlgorithm(games);
+        checkAlgorithm(metaMatchData);
+    }
+
+    public void checkMetaTrainedAlgorithm(String datasource) {
+        List<Game> testGames = new ArrayList<>();
+
+        try {
+            CSVParser csvParser = new CSVParserBuilder().withSeparator(';').withIgnoreQuotations(true).build();
+            CSVReader csvReader = new CSVReaderBuilder(new FileReader(datasource)).withSkipLines(1).withCSVParser(csvParser).build();
+            String[] nextLine;
+
+            while ((nextLine = csvReader.readNext()) != null) {
+                MetaMatchData metaMatchData = new MetaMatchData(nextLine);
+                testGames.add(convertMetaTftToRiotApiGame(metaMatchData));
+            }
+        } catch (FileNotFoundException fileNotFoundException) {
+            fileNotFoundException.printStackTrace();
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+        } catch (CsvValidationException csvValidationException) {
+            csvValidationException.printStackTrace();
+        }
+        checkMetaTrainedAlgorithm(testGames);
     }
 
     public void checkMetaTrainedAlgorithm() {
         checkMetaTrainedAlgorithm(gameRepository.findAll());
     }
+
     public void checkMetaTrainedAlgorithm(List<Game> games) {
 
+        double allMethodSum = 0, allMethodWorked = 0;
+        double allMethodExclusiveSum = 0, allMethodExclusiveWorked = 0;
         double teamMethodSum = 0, teamMethodWorked = 0;
+        double teamMethodExclusiveSum = 0, teamMethodExclusiveWorked = 0;
         double unitInTeamMethodSum = 0, unitInTeamMethodWorked = 0;
-        double unitMethodSum = 0;
-        double itemMethodSum = 0;
+        double itemUnitSum = 0, itemUnitWorked = 0;
+        double unitMethodSum = 0, unitMethodWorked = 0;
+        double itemMethodSum = 0, itemMethodWorked = 0;
+        int numberOfTeams = 0;
+        int[] maxValues = new int[]{0,1,2,4,6,9,12,16};
 
-        for (int game = 0; game < games.size(); game ++) {
+        for (Game game : games) {
 
-            ResponseTeam[] bestTwoTeams = new ResponseTeam[2];
-
-            for (Team team : games.get(game).getInfo().getParticipants()) {
-                if (team.getPlacement() == 1) {
-                    bestTwoTeams[0] = new ResponseTeam(team);
-                }
-                if (team.getPlacement() == 2) {
-                    bestTwoTeams[1] = new ResponseTeam(team);
-                }
+            numberOfTeams = game.getInfo().getParticipants().length;
+            ResponseTeam[] teams = new ResponseTeam[numberOfTeams];
+            for (int i =0 ; i < numberOfTeams; i++) {
+                teams[i] = new ResponseTeam(game.getInfo().getParticipants()[i]);
             }
 
-            if (bestTwoTeams[0] == null || bestTwoTeams[1] == null) {
+            if (Arrays.stream(teams).anyMatch(team -> team.getPlacement() < 1 || team.getPlacement() > 8)) {
                 continue;
             }
 
-            bestTwoTeams = predictMatch(bestTwoTeams);
+            ResponseTeam[] allMethodArray = predictMatch(Arrays.copyOf(teams, teams.length), teamWeight, unitWeight, itemWeight);
 
-            for (int team = 0; team < bestTwoTeams.length; team++) {
+            for (int team = 0; team < allMethodArray.length; team++) {
+                allMethodSum += Math.abs(team + 1 - allMethodArray[team].getPlacement());
+                allMethodWorked++;
+            }
 
+            for (int team = 0; team < allMethodArray.length; team++) {
+                if (Arrays.stream(allMethodArray).anyMatch(temp -> temp.getValue() == 0 || !teamNames.contains(temp.getTeamName()) || teamNames.equals("No team"))) {
+                    break;
+                }
+                allMethodExclusiveSum += Math.abs(team + 1 - allMethodArray[team].getPlacement());
+                allMethodExclusiveWorked++;
+            }
 
-                teamMethodSum += Math.abs(team + 1 - bestTwoTeams[team].getPlacement());
+            ResponseTeam[] teamMethodArray = predictMatchBasedOnTeams(Arrays.copyOf(teams, teams.length));
+
+            for (int team = 0; team < teamMethodArray.length; team++) {
+                teamMethodSum += Math.abs(team + 1 - teamMethodArray[team].getPlacement());
                 teamMethodWorked++;
             }
 
-            bestTwoTeams = predictMatchBasedOnUnitsInTeam(bestTwoTeams);
+            for (int team = 0; team < teamMethodArray.length; team++) {
+                if (Arrays.stream(teamMethodArray).anyMatch(temp -> temp.getValue() == 0 || !teamNames.contains(temp.getTeamName()) || teamNames.equals("No team"))) {
+                    break;
+                }
+                teamMethodExclusiveSum += Math.abs(team + 1 - teamMethodArray[team].getPlacement());
+                teamMethodExclusiveWorked++;
+            }
 
-            for (int team = 0; team < bestTwoTeams.length; team ++) {
-                if (Arrays.stream(bestTwoTeams).anyMatch(temp -> temp.getTeamName().equals("No team") || !teamNames.contains(temp.getTeamName()))) {
+            teams = predictMatchBasedOnItemsOnUnits(teams);
+
+            for (int team = 0; team < teams.length; team++) {
+                itemUnitSum += Math.abs(team + 1 - teamMethodArray[team].getPlacement());
+                itemUnitWorked++;
+            }
+
+            ResponseTeam[] unitInTeamArray = predictMatchBasedOnUnitsInTeam(Arrays.copyOf(teams, teams.length));
+
+            for (int team = 0; team < unitInTeamArray.length; team ++) {
+                if (Arrays.stream(unitInTeamArray).anyMatch(temp -> temp.getValue() == 0 || !teamNames.contains(temp.getTeamName()))) {
                     break;
                 }
 
-                unitInTeamMethodSum += Math.abs(team + 1 - bestTwoTeams[team].getPlacement());
+                unitInTeamMethodSum += Math.abs(team + 1 - unitInTeamArray[team].getPlacement());
                 unitInTeamMethodWorked++;
             }
 
-            bestTwoTeams = predictMatchBasedOnItems(bestTwoTeams);
+            ResponseTeam[] itemsArray = predictMatchBasedOnItems(Arrays.copyOf(teams, teams.length));
 
-            for (int team = 0; team < bestTwoTeams.length; team ++) {
-                itemMethodSum += Math.abs(team + 1 - bestTwoTeams[team].getPlacement());
+            for (int team = 0; team < itemsArray.length; team ++) {
+                itemMethodSum += Math.abs(team + 1 - itemsArray[team].getPlacement());
+                itemMethodWorked++;
             }
 
-            bestTwoTeams = predictMatchBasedOnUnits(bestTwoTeams);
+            ResponseTeam[] unitsArray = predictMatchBasedOnUnits(Arrays.copyOf(teams, teams.length));
 
-            for (int team = 0; team < bestTwoTeams.length; team++) {
-                unitMethodSum += Math.abs(team + 1 - bestTwoTeams[team].getPlacement());
+            for (int team = 0; team < unitsArray.length; team++) {
+                unitMethodSum += Math.abs(team + 1 - unitsArray[team].getPlacement());
+                unitMethodWorked++;
             }
         }
 
-        System.out.println("Team method avg error: " + teamMethodSum/teamMethodWorked + " with teams detected: " + teamMethodWorked/(games.size() * 2));
-        System.out.println("Unit in team method avg error: " + unitInTeamMethodSum/unitInTeamMethodWorked + " with teams detected: " + unitInTeamMethodWorked/(games.size() * 2));
-        System.out.println("Unit method avg error: " + itemMethodSum/(games.size()*2));
-        System.out.println("Item method avg error: " + unitMethodSum/(games.size()*2));
+        System.out.println("All method  avg error: " + allMethodSum/(allMethodWorked * maxValues[numberOfTeams - 1])+ " with teams detected: " + allMethodWorked/(games.size() * numberOfTeams));
+        System.out.println("All method exclusive avg error: " + allMethodExclusiveSum/(allMethodExclusiveWorked * maxValues[numberOfTeams - 1]) + " with teams detected: " + allMethodExclusiveWorked/(games.size() * numberOfTeams));
+        System.out.println("Team method exclusive avg error: " + teamMethodExclusiveSum/(teamMethodExclusiveWorked * maxValues[numberOfTeams - 1]) + " with teams detected: " + teamMethodExclusiveWorked/(games.size() * numberOfTeams));
+        System.out.println("Team method avg error: " + teamMethodSum/(teamMethodWorked * maxValues[numberOfTeams - 1]) + " with teams detected: " + teamMethodWorked/(games.size() * numberOfTeams));
+        System.out.println("Unit in team method avg error: " + unitInTeamMethodSum/(unitInTeamMethodWorked * maxValues[numberOfTeams - 1]) + " with teams detected: " + unitInTeamMethodWorked/(games.size() * numberOfTeams));
+        System.out.println("Unit method avg error: " + itemMethodSum/(itemMethodWorked * maxValues[numberOfTeams - 1]));
+        System.out.println("Item method avg error: " + unitMethodSum/(unitMethodWorked * maxValues[numberOfTeams - 1]));
+        System.out.println("Item on unit method avg error: " + itemUnitSum/(itemUnitWorked * maxValues[numberOfTeams - 1]));
     }
 
     private int[] getTeamsIndexes(String[] teams){
@@ -591,7 +741,6 @@ public class MainService {
         this.itemIDs = itemIndexes;
         this.unitMatrix = unitMatrix;
         this.itemMatrix = itemMatrix;
-
     }
 
     private Team convertMetaTftToRiotApiTeam(MetaUnit[] playerUnits, String[] playerTraits, double healthLost) {
@@ -647,7 +796,6 @@ public class MainService {
         return resultTeam;
     }
 
-
     public Game convertMetaTftToRiotApiGame(MetaMatchData matchData) {
         Team player, opponent;
         player = convertMetaTftToRiotApiTeam(matchData.getPlayer_units(), matchData.getPlayer_full_traits(), matchData.getPlayer_health_lost());
@@ -658,5 +806,49 @@ public class MainService {
         Game game = new Game();
         game.setInfo(gameInfo);
         return game;
+    }
+
+    private void attunePredictMatchWeights(List<Game> games) {
+
+        double lowestTeamWeight = 0, lowestItemWeight = 0, lowestUnitWeight = 0, lowestError = 1;
+
+        for (double teamWeight = 0; teamWeight <= 1; teamWeight += 0.1) {
+            for (double unitWeight = 0; unitWeight <= 1; unitWeight += 0.1) {
+                for (double itemWeight = 0; itemWeight <= 1; itemWeight += 0.1) {
+                    double allMethodSum = 0, allMethodWorked = 0;
+
+                    for (Game game : games) {
+
+                        ResponseTeam[] teams = new ResponseTeam[game.getInfo().getParticipants().length];
+
+                        for (int i = 0 ; i < game.getInfo().getParticipants().length; i++) {
+                            teams[i] = new ResponseTeam(game.getInfo().getParticipants()[i]);
+                        }
+
+                        if (Arrays.stream(teams).anyMatch(team -> team.getValue() < 1 || team.getPlacement() > 8)) {
+                            continue;
+                        }
+
+                        ResponseTeam[] allMethodArray = predictMatch(Arrays.copyOf(teams, teams.length), teamWeight, unitWeight, itemWeight);
+
+                        for (int team = 0; team < allMethodArray.length; team++) {
+                            allMethodSum += Math.abs(team + 1 - allMethodArray[team].getPlacement());
+                            allMethodWorked++;
+                        }
+                    }
+
+                    if (allMethodSum/allMethodWorked < lowestError) {
+                        lowestError = allMethodSum/allMethodWorked;
+                        lowestTeamWeight = teamWeight;
+                        lowestUnitWeight = unitWeight;
+                        lowestItemWeight = itemWeight;
+                    }
+                }
+            }
+        }
+        System.out.println(String.format("Lowest error: %s with team weight: %s unit weight: %s and item weight: %s", lowestError, lowestTeamWeight, lowestUnitWeight, lowestItemWeight));
+        this.teamWeight = lowestTeamWeight;
+        this.unitWeight = lowestUnitWeight;
+        this.itemWeight = lowestItemWeight;
     }
 }
